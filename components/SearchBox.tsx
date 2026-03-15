@@ -17,6 +17,15 @@ export default function SearchBox({
   autoFocus?: boolean;
   large?: boolean;
 }) {
+  const normalizeSymbolForRoute = (value: string) => {
+    const [baseSymbol] = value
+      .trim()
+      .toUpperCase()
+      .split(":")
+      .reverse();
+    return (baseSymbol || "").replace(/\s+/g, "");
+  };
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -26,29 +35,65 @@ export default function SearchBox({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const debounceRef = useRef<NodeJS.Timeout>();
+  const latestQueryRef = useRef("");
+  const abortRef = useRef<AbortController | null>(null);
+  const listboxId = `${large ? "large-" : "small-"}search-result-list`;
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 1) {
+    const trimmed = q.trim();
+    latestQueryRef.current = trimmed;
+    setSelectedIndex(-1);
+
+    if (!trimmed) {
       setResults([]);
       setIsOpen(false);
       return;
     }
+
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
+    setIsOpen(true);
+
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        setResults([]);
+        setIsOpen(true);
+        return;
+      }
+
       const data = await res.json();
-      setResults(data.results || []);
-      setIsOpen(true);
-    } catch {
-      // silently fail
+      if (trimmed !== latestQueryRef.current) return;
+
+      const resultsArray = Array.isArray(data.results) ? data.results : [];
+      setResults(resultsArray);
+      setIsOpen(Boolean(trimmed));
+    } catch (error) {
+      if ((error as DOMException)?.name === "AbortError") {
+        return;
+      }
+      if (trimmed === latestQueryRef.current) {
+        setResults([]);
+        setIsOpen(Boolean(trimmed));
+      }
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(query), 250);
+    debounceRef.current = setTimeout(() => search(query), 220);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -57,7 +102,9 @@ export default function SearchBox({
   const navigate = (symbol: string) => {
     setIsOpen(false);
     setQuery("");
-    router.push(`/stock/${symbol}`);
+    const normalizedSymbol = normalizeSymbolForRoute(symbol);
+    if (!normalizedSymbol) return;
+    router.push(`/stock/${encodeURIComponent(normalizedSymbol)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -88,11 +135,11 @@ export default function SearchBox({
         setIsOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Global keyboard shortcut: press "/" to focus search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
@@ -105,6 +152,7 @@ export default function SearchBox({
         inputRef.current?.focus();
       }
     };
+
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
@@ -129,18 +177,30 @@ export default function SearchBox({
         </svg>
         <input
           ref={inputRef}
-          type="text"
+          type="search"
           value={query}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-expanded={isOpen}
+          aria-label="Search stocks and tickers"
           onChange={(e) => {
             setQuery(e.target.value);
+            setIsOpen(Boolean(e.target.value.trim()));
             setSelectedIndex(-1);
           }}
           onKeyDown={handleKeyDown}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
-          placeholder="Search stocks, crypto, commodities..."
+          onFocus={() => query.trim().length > 0 && setIsOpen(true)}
+          placeholder="Search US stocks..."
           autoFocus={autoFocus}
+          inputMode="search"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          enterKeyHint="search"
           className={`w-full bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600/50 transition-all ${
-            large ? "pl-12 pr-4 py-3.5" : "pl-10 pr-4 py-2"
+            large ? "pl-12 pr-10 py-3.5" : "pl-10 pr-10 py-2.5"
           }`}
         />
         {isLoading && (
@@ -156,33 +216,44 @@ export default function SearchBox({
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 max-h-80 overflow-y-auto">
-          {results.map((result, index) => (
-            <button
-              key={result.symbol}
-              onClick={() => navigate(result.symbol)}
-              className={`w-full px-4 py-3 flex items-center justify-between transition-colors text-left ${
-                index === selectedIndex
-                  ? "bg-zinc-800"
-                  : "hover:bg-zinc-800/60"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="font-semibold text-white text-sm flex-shrink-0">
-                  {result.symbol}
-                </span>
-                <span className="text-zinc-400 text-sm truncate">
-                  {result.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <TypeBadge type={result.type} />
-                <span className="text-[10px] text-zinc-600 uppercase">
-                  {result.exchange}
-                </span>
-              </div>
-            </button>
-          ))}
+        <div
+          id={listboxId}
+          role="listbox"
+          className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 max-h-80 overflow-y-auto"
+        >
+          <ul>
+            {results.map((result, index) => (
+              <li key={result.symbol} role="option" aria-selected={index === selectedIndex}>
+                <button
+                  onClick={() => navigate(result.symbol)}
+                  className={`w-full px-4 py-3 flex items-center justify-between transition-colors text-left min-h-12 touch-manipulation ${
+                    index === selectedIndex
+                      ? "bg-zinc-800"
+                      : "hover:bg-zinc-800/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-semibold text-white text-sm flex-shrink-0">
+                      {result.symbol}
+                    </span>
+                    <span className="text-zinc-400 text-sm truncate">{result.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <TypeBadge type={result.type} />
+                    <span className="text-[10px] text-zinc-600 uppercase">
+                      {result.exchange}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isOpen && query.trim().length > 0 && !isLoading && results.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 px-4 py-3 text-zinc-500 text-sm">
+          No matching symbols found
         </div>
       )}
     </div>

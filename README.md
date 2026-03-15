@@ -1,6 +1,6 @@
-# ProStockCharts — Stock Charts & Financial Data
+# Snap Charts — Stock Charts & Financial Data
 
-A fast, modern stock market dashboard with interactive charts, key statistics, financial metrics, company profiles, and news — powered by Yahoo Finance data. Live at [prostockcharts.com](https://prostockcharts.com).
+A fast, modern stock market dashboard with interactive charts, key statistics, financial metrics, company profiles, and news — powered by Yahoo Finance data. Live at [snap-charts.com](https://snap-charts.com).
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4) ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -27,8 +27,8 @@ No API keys required — data is fetched server-side from Yahoo Finance.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/zrogers010/pro-stock-charts.git
-cd pro-stock-charts
+git clone https://github.com/zrogers010/snap-charts.git
+cd snap-charts
 ```
 
 ### 2. Install dependencies
@@ -65,13 +65,13 @@ A multi-stage Dockerfile is included for lightweight production images.
 ### Build the image
 
 ```bash
-docker build -t prostockcharts .
+docker build -t snap-charts .
 ```
 
 ### Run the container
 
 ```bash
-docker run -p 3000:3000 prostockcharts
+docker run -p 3000:3000 snap-charts
 ```
 
 The app is now live at [http://localhost:3000](http://localhost:3000).
@@ -86,7 +86,7 @@ The app is now live at [http://localhost:3000](http://localhost:3000).
 Example:
 
 ```bash
-docker run -p 8080:8080 -e PORT=8080 prostockcharts
+docker run -p 8080:8080 -e PORT=8080 snap-charts
 ```
 
 ---

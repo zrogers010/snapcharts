@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Header from "@/components/Header";
 import StockChart from "@/components/StockChart";
 import {
@@ -107,6 +107,12 @@ interface NewsArticle {
 /* ------------------------------------------------------------------ */
 
 export default function StockView({ symbol }: { symbol: string }) {
+  const normalizedSymbol =
+    symbol
+      .toUpperCase()
+      .trim()
+      .split(":")
+      .pop() || "";
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [news, setNews] = useState<NewsArticle[]>([]);
@@ -118,8 +124,8 @@ export default function StockView({ symbol }: { symbol: string }) {
     setError(null);
 
     Promise.all([
-      fetch(`/api/quote/${symbol}`).then((r) => r.json()),
-      fetch(`/api/news/${symbol}`).then((r) => r.json()),
+      fetch(`/api/quote/${normalizedSymbol}`).then((r) => r.json()),
+      fetch(`/api/news/${normalizedSymbol}`).then((r) => r.json()),
     ])
       .then(([quoteData, newsData]) => {
         if (quoteData.error) {
@@ -132,7 +138,7 @@ export default function StockView({ symbol }: { symbol: string }) {
       })
       .catch(() => setError("Failed to load stock data."))
       .finally(() => setIsLoading(false));
-  }, [symbol]);
+  }, [normalizedSymbol]);
 
   /* Loading state */
   if (isLoading) {
@@ -157,7 +163,7 @@ export default function StockView({ symbol }: { symbol: string }) {
             Symbol Not Found
           </h2>
           <p className="text-zinc-400 max-w-sm mx-auto">
-            {error || `We couldn't find data for "${symbol}".`}
+            {error || `We couldn't find data for "${normalizedSymbol}".`}
           </p>
         </div>
       </div>
@@ -185,7 +191,7 @@ export default function StockView({ symbol }: { symbol: string }) {
         <div className="mb-6">
           <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              {symbol}
+              {normalizedSymbol}
             </h1>
             <span className="text-zinc-400 text-base">
               {quote.shortName || quote.longName}
@@ -216,16 +222,69 @@ export default function StockView({ symbol }: { symbol: string }) {
 
         {/* ── Chart ────────────────────────────────────────────── */}
         <div className="mb-8">
-          <StockChart symbol={symbol} />
+          <StockChart key={normalizedSymbol} symbol={normalizedSymbol} />
         </div>
 
-        {/* ── Stats + Company ──────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Key Statistics */}
-          <div className="lg:col-span-1 bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-5">
-            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">
-              Key Statistics
-            </h2>
+        {/* ── About, Stats + Financials ───────────────────────── */}
+        <div className="space-y-4 mb-8">
+          <ExpandablePanel title={`About ${quote.shortName || normalizedSymbol}`}>
+            {profile ? (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 mb-5">
+                  {profile.sector && (
+                    <InfoItem label="Sector" value={profile.sector} />
+                  )}
+                  {profile.industry && (
+                    <InfoItem label="Industry" value={profile.industry} />
+                  )}
+                  {profile.fullTimeEmployees != null && (
+                    <InfoItem
+                      label="Employees"
+                      value={formatNumber(profile.fullTimeEmployees)}
+                    />
+                  )}
+                  {profile.city && (
+                    <InfoItem
+                      label="Headquarters"
+                      value={[profile.city, profile.state, profile.country]
+                        .filter(Boolean)
+                        .join(", ")}
+                    />
+                  )}
+                  {profile.website && (
+                    <div>
+                      <div className="text-[11px] text-zinc-500 mb-0.5">
+                        Website
+                      </div>
+                      <a
+                        href={profile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        {profile.website.replace(/^https?:\/\/(www\.)?/, "")}
+                      </a>
+                    </div>
+                  )}
+                  {profile.companyOfficers?.[0] && (
+                    <InfoItem
+                      label="CEO"
+                      value={profile.companyOfficers[0].name}
+                    />
+                  )}
+                </div>
+                {profile.longBusinessSummary && (
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {profile.longBusinessSummary}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">No company profile data.</p>
+            )}
+          </ExpandablePanel>
+
+          <ExpandablePanel title="Key Statistics">
             <div className="space-y-0">
               <StatRow
                 label="Previous Close"
@@ -327,151 +386,91 @@ export default function StockView({ symbol }: { symbol: string }) {
                 </>
               )}
             </div>
-          </div>
+          </ExpandablePanel>
 
-          {/* Right column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Financial Metrics */}
-            {financial && (
-              <div className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-5">
-                <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">
-                  Financial Metrics
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {financial.totalRevenue != null && (
-                    <MetricCard
-                      label="Revenue"
-                      value={formatLargeNumber(financial.totalRevenue)}
-                    />
-                  )}
-                  {financial.revenueGrowth != null && (
-                    <MetricCard
-                      label="Revenue Growth"
-                      value={formatPercent(financial.revenueGrowth)}
-                    />
-                  )}
-                  {financial.grossMargins != null && (
-                    <MetricCard
-                      label="Gross Margin"
-                      value={formatPercent(financial.grossMargins)}
-                    />
-                  )}
-                  {financial.operatingMargins != null && (
-                    <MetricCard
-                      label="Operating Margin"
-                      value={formatPercent(financial.operatingMargins)}
-                    />
-                  )}
-                  {financial.profitMargins != null && (
-                    <MetricCard
-                      label="Profit Margin"
-                      value={formatPercent(financial.profitMargins)}
-                    />
-                  )}
-                  {financial.returnOnEquity != null && (
-                    <MetricCard
-                      label="Return on Equity"
-                      value={formatPercent(financial.returnOnEquity)}
-                    />
-                  )}
-                  {financial.totalCash != null && (
-                    <MetricCard
-                      label="Total Cash"
-                      value={formatLargeNumber(financial.totalCash)}
-                    />
-                  )}
-                  {financial.totalDebt != null && (
-                    <MetricCard
-                      label="Total Debt"
-                      value={formatLargeNumber(financial.totalDebt)}
-                    />
-                  )}
-                  {financial.freeCashflow != null && (
-                    <MetricCard
-                      label="Free Cash Flow"
-                      value={formatLargeNumber(financial.freeCashflow)}
-                    />
-                  )}
-                  {financial.targetMeanPrice != null && (
-                    <MetricCard
-                      label="Analyst Target"
-                      value={formatCurrency(financial.targetMeanPrice)}
-                    />
-                  )}
-                  {financial.recommendationKey && (
-                    <MetricCard
-                      label="Recommendation"
-                      value={financial.recommendationKey.toUpperCase()}
-                      accent
-                    />
-                  )}
-                  {financial.numberOfAnalystOpinions != null && (
-                    <MetricCard
-                      label="Analyst Opinions"
-                      value={financial.numberOfAnalystOpinions.toString()}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Company Profile */}
-            {profile && (
-              <div className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-5">
-                <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">
-                  About {quote.shortName || symbol}
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 mb-4">
-                  {profile.sector && (
-                    <InfoItem label="Sector" value={profile.sector} />
-                  )}
-                  {profile.industry && (
-                    <InfoItem label="Industry" value={profile.industry} />
-                  )}
-                  {profile.fullTimeEmployees != null && (
-                    <InfoItem
-                      label="Employees"
-                      value={formatNumber(profile.fullTimeEmployees)}
-                    />
-                  )}
-                  {profile.city && (
-                    <InfoItem
-                      label="Headquarters"
-                      value={[profile.city, profile.state, profile.country]
-                        .filter(Boolean)
-                        .join(", ")}
-                    />
-                  )}
-                  {profile.website && (
-                    <div>
-                      <div className="text-[11px] text-zinc-500 mb-0.5">
-                        Website
-                      </div>
-                      <a
-                        href={profile.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                      >
-                        {profile.website.replace(/^https?:\/\/(www\.)?/, "")}
-                      </a>
-                    </div>
-                  )}
-                  {profile.companyOfficers?.[0] && (
-                    <InfoItem
-                      label="CEO"
-                      value={profile.companyOfficers[0].name}
-                    />
-                  )}
-                </div>
-                {profile.longBusinessSummary && (
-                  <p className="text-sm text-zinc-400 leading-relaxed line-clamp-4">
-                    {profile.longBusinessSummary}
-                  </p>
+          <ExpandablePanel title="Financial Metrics">
+            {financial ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {financial.totalRevenue != null && (
+                  <MetricCard
+                    label="Revenue"
+                    value={formatLargeNumber(financial.totalRevenue)}
+                  />
+                )}
+                {financial.revenueGrowth != null && (
+                  <MetricCard
+                    label="Revenue Growth"
+                    value={formatPercent(financial.revenueGrowth)}
+                  />
+                )}
+                {financial.grossMargins != null && (
+                  <MetricCard
+                    label="Gross Margin"
+                    value={formatPercent(financial.grossMargins)}
+                  />
+                )}
+                {financial.operatingMargins != null && (
+                  <MetricCard
+                    label="Operating Margin"
+                    value={formatPercent(financial.operatingMargins)}
+                  />
+                )}
+                {financial.profitMargins != null && (
+                  <MetricCard
+                    label="Profit Margin"
+                    value={formatPercent(financial.profitMargins)}
+                  />
+                )}
+                {financial.returnOnEquity != null && (
+                  <MetricCard
+                    label="Return on Equity"
+                    value={formatPercent(financial.returnOnEquity)}
+                  />
+                )}
+                {financial.totalCash != null && (
+                  <MetricCard
+                    label="Total Cash"
+                    value={formatLargeNumber(financial.totalCash)}
+                  />
+                )}
+                {financial.totalDebt != null && (
+                  <MetricCard
+                    label="Total Debt"
+                    value={formatLargeNumber(financial.totalDebt)}
+                  />
+                )}
+                {financial.freeCashflow != null && (
+                  <MetricCard
+                    label="Free Cash Flow"
+                    value={formatLargeNumber(financial.freeCashflow)}
+                  />
+                )}
+                {financial.targetMeanPrice != null && (
+                  <MetricCard
+                    label="Analyst Target"
+                    value={formatCurrency(financial.targetMeanPrice)}
+                  />
+                )}
+                {financial.recommendationKey && (
+                  <MetricCard
+                    label="Recommendation"
+                    value={financial.recommendationKey.toUpperCase()}
+                    accent
+                  />
+                )}
+                {financial.numberOfAnalystOpinions != null && (
+                  <MetricCard
+                    label="Analyst Opinions"
+                    value={financial.numberOfAnalystOpinions.toString()}
+                  />
                 )}
               </div>
+            ) : (
+              <p className="text-sm text-zinc-500">
+                No financial metrics available.
+              </p>
             )}
-          </div>
+          </ExpandablePanel>
         </div>
 
         {/* ── News ─────────────────────────────────────────────── */}
@@ -538,6 +537,38 @@ function StatRow({
         {value ?? "—"}
       </span>
     </div>
+  );
+}
+
+function ExpandablePanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="w-full px-5 py-3 flex items-center justify-between text-left"
+      >
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
+          {title}
+        </h2>
+        <span
+          className={`text-zinc-500 text-xs transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1">{children}</div>
+      )}
+    </section>
   );
 }
 
