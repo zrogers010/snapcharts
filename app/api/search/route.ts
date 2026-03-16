@@ -83,7 +83,7 @@ const mapResult = (item: Record<string, unknown>): SearchItem | null => {
   return {
     symbol,
     name: normalizeText(name),
-    type: cleanType(item.quoteType ?? "EQUITY"),
+    type: cleanType(String(item.quoteType ?? "EQUITY")),
     exchange: String(item.exchDisp ?? item.exchange ?? ""),
     region: String(item.region ?? ""),
   };
