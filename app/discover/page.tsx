@@ -194,7 +194,7 @@ export default function DiscoverPage({
               {activeTopic.symbols.map((item) => (
                 <Link
                   key={item.symbol}
-                  href={`/stock/${item.symbol}`}
+                  href={`/chart/${encodeURIComponent(item.symbol)}`}
                   className="flex items-center justify-between border border-zinc-800 rounded-xl p-3 hover:bg-zinc-800/50 transition-colors"
                 >
                   <span className="text-sm text-zinc-200">{item.name}</span>

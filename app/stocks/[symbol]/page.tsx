@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
-type LegacyStockPageProps = {
+type LegacyStocksPageProps = {
   params: { symbol: string };
 };
 
-export default function LegacyStockPage({ params }: LegacyStockPageProps) {
+export default function LegacyStocksPage({ params }: LegacyStocksPageProps) {
   let symbol = params.symbol;
   try {
     symbol = decodeURIComponent(params.symbol);

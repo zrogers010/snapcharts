@@ -8,6 +8,8 @@ type SearchItem = {
   region: string;
 };
 
+type SearchKind = "stock" | "crypto" | "future";
+
 const normalizeText = (value: string) =>
   String(value || "")
     .toUpperCase()
@@ -16,17 +18,58 @@ const normalizeText = (value: string) =>
 
 const normalizeSymbolText = (value: string) => String(value || "").trim().toUpperCase();
 
-const isUsStock = (item: SearchItem) => {
-  if (item.type !== "EQUITY") return false;
-  if (!item.symbol || item.symbol.includes("=")) return false;
-  if (item.region && item.region.toUpperCase() !== "US") return false;
+const cleanType = (value: string) => String(value || "").toUpperCase();
 
-  if (item.symbol.includes(".") && /\.[A-Z0-9]{2,}$/.test(item.symbol)) {
-    return false;
-  }
+const isFutureSymbol = (symbol: string) => {
+  const upper = symbol.toUpperCase();
+  return upper.endsWith("=F") || upper.endsWith(".F") || upper.includes("^");
+};
 
-  const exch = item.exchange.toUpperCase();
-  return /NYSE|NASDAQ|NMS|NYQ|AMEX|ARCA|BATS/.test(exch);
+const isCryptoSymbol = (symbol: string) => {
+  return symbol.includes("-");
+};
+
+const getSearchKind = (item: SearchItem): SearchKind => {
+  const symbol = item.symbol.toUpperCase();
+  const type = item.type.toUpperCase();
+
+  if (type.includes("CRYPTO") || isCryptoSymbol(symbol)) return "crypto";
+  if (type.includes("FUTURE") || isFutureSymbol(symbol)) return "future";
+  return "stock";
+};
+
+const getTypeRank = (item: SearchItem) => {
+  const kind = getSearchKind(item);
+  if (kind === "stock") return 0;
+  if (kind === "crypto") return 1;
+  return 2;
+};
+
+const isUSExchange = (exchange: string) => {
+  const value = (exchange || "").toUpperCase();
+  return /NYSE|NYSEAMERICAN|NASDAQ|NMS|NCM|CBOE|BATS|ARCA|AMEX/.test(value);
+};
+
+const isSPCategory = (item: SearchItem) => {
+  const exchange = (item.exchange || "").toUpperCase();
+  const name = item.name;
+  return (
+    /S&P/.test(exchange) ||
+    /\bSPX\b/.test(exchange) ||
+    /\^S&P/i.test(name) ||
+    /\bS&P\b/i.test(name)
+  );
+};
+
+const getStockPriority = (item: SearchItem) => {
+  if (getSearchKind(item) !== "stock") return 999;
+  const exchange = item.exchange || "";
+  const region = (item.region || "").toUpperCase();
+
+  if (isUSExchange(exchange)) return 0;
+  if (isSPCategory(item)) return 1;
+  if (region === "US") return 2;
+  return 3;
 };
 
 const mapResult = (item: Record<string, unknown>): SearchItem | null => {
@@ -40,7 +83,7 @@ const mapResult = (item: Record<string, unknown>): SearchItem | null => {
   return {
     symbol,
     name: normalizeText(name),
-    type: normalizeText(String(item.quoteType ?? "EQUITY")),
+    type: cleanType(item.quoteType ?? "EQUITY"),
     exchange: String(item.exchDisp ?? item.exchange ?? ""),
     region: String(item.region ?? ""),
   };
@@ -75,7 +118,6 @@ const fetchYahooSearch = async (query: string): Promise<SearchItem[]> => {
   endpoint.searchParams.set("quotesCount", "100");
   endpoint.searchParams.set("newsCount", "0");
   endpoint.searchParams.set("lang", "en-US");
-  endpoint.searchParams.set("region", "US");
 
   const response = await fetch(endpoint, {
     headers: {
@@ -216,24 +258,32 @@ export async function GET(request: NextRequest) {
   try {
     const queryVariants = buildSearchQueries(query);
     const resultSets = await Promise.all(queryVariants.map(fetchYahooSearch));
-    const usOnly = new Map<string, SearchItem>();
+    const allResults = new Map<string, SearchItem>();
 
     for (const results of resultSets) {
       for (const item of results) {
-        if (!isUsStock(item)) continue;
-        if (!usOnly.has(item.symbol)) {
-          usOnly.set(item.symbol, item);
+        if (!item.symbol) continue;
+        const symbol = item.symbol.toUpperCase();
+        if (!allResults.has(symbol)) {
+          allResults.set(symbol, item);
         }
       }
     }
 
-    const ranked = Array.from(usOnly.values())
+    const ranked = Array.from(allResults.values())
       .map((item) => ({
         ...item,
         _score: rankItem(item, query),
       }))
       .filter((item) => item._score > 0)
       .sort((a, b) => {
+        const typeDiff = getTypeRank(a) - getTypeRank(b);
+        if (typeDiff !== 0) return typeDiff;
+
+        const aPriority = getStockPriority(a);
+        const bPriority = getStockPriority(b);
+        if (aPriority !== bPriority) return aPriority - bPriority;
+
         if (b._score !== a._score) return b._score - a._score;
 
         const aSymbolPrefix = a.symbol.startsWith(query);

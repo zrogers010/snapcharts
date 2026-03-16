@@ -49,13 +49,34 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const symbol = (params.get("symbol") || "").toUpperCase().trim();
   const resolution = (params.get("resolution") || "1D").trim();
+  const range = (params.get("range") || "").trim().toLowerCase();
   const now = Math.floor(Date.now() / 1000);
   const fallbackFrom = now - 60 * 60 * 24 * 365;
-  const from = Math.max(
-    1,
-    normalizeTimestamp(Number(params.get("from") || fallbackFrom))
-  );
-  const to = Math.min(now, normalizeTimestamp(Number(params.get("to") || now)));
+  const rangeWindowSeconds: Record<string, number> = {
+    "1d": 1 * 24 * 60 * 60,
+    "5d": 5 * 24 * 60 * 60,
+    "1mo": 31 * 24 * 60 * 60,
+    "3mo": 92 * 24 * 60 * 60,
+    "6mo": 183 * 24 * 60 * 60,
+    "1y": 366 * 24 * 60 * 60,
+    "5y": 5 * 366 * 24 * 60 * 60,
+  };
+
+  const rawFrom = normalizeTimestamp(Number(params.get("from") || fallbackFrom));
+  const rawTo = normalizeTimestamp(Number(params.get("to") || now));
+  const forcedToByRange = rangeWindowSeconds[range] ? now : undefined;
+  const to =
+    forcedToByRange != null
+      ? forcedToByRange
+      : rawTo > 0 && rawTo <= now
+      ? rawTo
+      : now;
+  const forcedFromByRange = rangeWindowSeconds[range]
+    ? now - rangeWindowSeconds[range]
+    : undefined;
+  const fromCandidate =
+    forcedFromByRange != null ? forcedFromByRange : rawFrom > 0 ? rawFrom : fallbackFrom;
+  const from = Math.max(1, Math.min(fromCandidate, to - 60));
 
   if (!symbol) {
     return NextResponse.json({ bars: [] }, { status: 400 });
@@ -65,7 +86,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await yahooFinance.chart(symbol, {
-      period1: clampDate(Math.min(to, from), fallbackFrom),
+      period1: clampDate(Math.min(from, to), fallbackFrom),
       period2: clampDate(to + 60 * 60 * 24, now),
       interval: interval as any,
     });
@@ -87,6 +108,7 @@ export async function GET(request: NextRequest) {
         close: parseFloat(q.close.toFixed(2)),
         volume: q.volume || 0,
       }))
+      .filter((bar) => bar.time >= from && bar.time <= to)
       .sort((a, b) => a.time - b.time);
 
     return NextResponse.json({ bars });

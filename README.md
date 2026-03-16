@@ -76,6 +76,36 @@ docker run -p 3000:3000 snap-charts
 
 The app is now live at [http://localhost:3000](http://localhost:3000).
 
+### Quick deploy on a fresh Amazon Linux EC2
+
+Use this one-command flow for future updates:
+
+1. First time setup on a new instance (installs git/docker, clones repo, builds image, and starts container):
+
+```bash
+sudo mkdir -p /opt
+sudo chown "$USER":"$USER" /opt
+REPO_URL=https://github.com/zrogers010/snap-charts.git BRANCH=main APP_DIR=/opt/snapcharts IMAGE_NAME=snapcharts CONTAINER_NAME=snapcharts HOST_PORT=80 ./scripts/deploy.sh
+```
+
+2. For later deploys (after you’ve already pulled/cloned):
+
+```bash
+cd /opt/snapcharts
+git pull origin main
+./scripts/deploy.sh
+```
+
+The script will:
+
+- Install missing `git` / `docker`
+- Start Docker
+- Pull latest commit from `BRANCH`
+- Rebuild image
+- Replace the existing container and keep the new one running with `--restart unless-stopped`
+
+Make sure security group allows inbound traffic on `HOST_PORT` (80 by default).
+
 ### Environment variables (optional)
 
 | Variable   | Default   | Description              |

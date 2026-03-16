@@ -104,7 +104,7 @@ export default function SearchBox({
     setQuery("");
     const normalizedSymbol = normalizeSymbolForRoute(symbol);
     if (!normalizedSymbol) return;
-    router.push(`/stock/${encodeURIComponent(normalizedSymbol)}`);
+    router.push(`/chart/${encodeURIComponent(normalizedSymbol)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -183,7 +183,7 @@ export default function SearchBox({
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-expanded={isOpen}
-          aria-label="Search stocks and tickers"
+          aria-label="Search stocks, crypto, and futures"
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(Boolean(e.target.value.trim()));
@@ -191,7 +191,7 @@ export default function SearchBox({
           }}
           onKeyDown={handleKeyDown}
           onFocus={() => query.trim().length > 0 && setIsOpen(true)}
-          placeholder="Search US stocks..."
+          placeholder="Search stocks, crypto, and futures..."
           autoFocus={autoFocus}
           inputMode="search"
           autoComplete="off"
@@ -267,6 +267,7 @@ const typeConfig: Record<string, { label: string; color: string }> = {
   CRYPTOCURRENCY: { label: "Crypto", color: "text-amber-400 bg-amber-400/10" },
   FUTURE: { label: "Futures", color: "text-emerald-400 bg-emerald-400/10" },
   COMMODITY: { label: "Commodity", color: "text-emerald-400 bg-emerald-400/10" },
+  FUTURES: { label: "Futures", color: "text-emerald-400 bg-emerald-400/10" },
 };
 
 function TypeBadge({ type }: { type: string }) {

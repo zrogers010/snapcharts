@@ -13,19 +13,64 @@ export default function Header({ showSearch = true }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 gap-3">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-7 h-7 bg-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 relative overflow-hidden">
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
+                viewBox="0 0 48 48"
                 fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                className="w-full h-full"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
               >
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
+                <path
+                  d="M6 6h36v36H6z"
+                  fill="rgba(9,9,11,0.25)"
+                />
+                <rect
+                  x="11"
+                  y="12"
+                  width="26"
+                  height="20"
+                  rx="3"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.92)"
+                  strokeWidth="2"
+                />
+                <rect
+                  x="11"
+                  y="28"
+                  width="6"
+                  height="4"
+                  fill="rgba(125,211,252,0.85)"
+                  rx="1"
+                />
+                <rect
+                  x="20"
+                  y="24"
+                  width="6"
+                  height="8"
+                  fill="rgba(96,165,250,0.95)"
+                  rx="1"
+                />
+                <rect
+                  x="29"
+                  y="20"
+                  width="6"
+                  height="12"
+                  fill="rgba(165,243,252,0.95)"
+                  rx="1"
+                />
+                <path
+                  d="M11 30L16 23L23 25L30 20L37 16"
+                  stroke="white"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="37" cy="16" r="4.2" fill="rgba(255,255,255,0.95)" />
+                <path
+                  d="M34.2 16C34.2 18.1 35.9 19.8 38 19.8C40.1 19.8 41.8 18.1 41.8 16C41.8 13.9 40.1 12.2 38 12.2C35.9 12.2 34.2 13.9 34.2 16Z"
+                  fill="rgba(9,9,11,0.95)"
+                />
               </svg>
             </div>
             <span className="text-base font-semibold text-white tracking-tight">

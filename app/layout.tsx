@@ -66,6 +66,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const year = new Date().getFullYear();
   return (
     <html lang="en">
       <head>
@@ -89,7 +90,16 @@ export default function RootLayout({
         </Script>
       </head>
       <body className={`${inter.className} min-h-screen antialiased`}>
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <main className="flex-1">{children}</main>
+          <footer className="border-t border-zinc-800/70 bg-zinc-950/80">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-[11px] leading-relaxed text-zinc-500">
+              © {year} SnapCharts.com — All rights reserved. SnapCharts is a
+              proprietary brand owned by SnapCharts. Use of this site and brand
+              name is prohibited without written permission.
+            </div>
+          </footer>
+        </div>
       </body>
     </html>
   );

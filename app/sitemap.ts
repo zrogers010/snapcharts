@@ -50,7 +50,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.55,
     })),
     ...trendingSymbols.map((symbol) => ({
-      url: `${normalizedSiteUrl}/stock/${symbol}`,
+      url: `${normalizedSiteUrl}/chart/${encodeURIComponent(symbol)}`,
       lastModified: today,
       changeFrequency: "daily",
       priority: 0.75,

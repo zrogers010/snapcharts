@@ -1,278 +1,49 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-
-type ChartRange = "1d" | "5d" | "1mo" | "3mo" | "6mo" | "1y" | "5y";
-
-type TradingViewWindow = Window & {
-  TradingView?: {
-    widget: new (config: Record<string, unknown>) => TradingViewWidget;
-  };
-};
-
-interface TradingViewWidget {
-  onChartReady: (cb: () => void) => void;
-  remove: () => void;
-  activeChart?: () => unknown;
-  chart?: (index?: number) => unknown;
-  takeClientScreenshot?: (options?: Record<string, unknown>) => Promise<HTMLCanvasElement> | HTMLCanvasElement;
-  takeScreenshot?: (...args: unknown[]) => unknown;
-  getScreenshot?: () => unknown;
-  image?: (...args: unknown[]) => unknown;
-  imageCanvas?: (...args: unknown[]) => unknown;
-  subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-  unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-  postMessage?: {
-    get?: (path: string, payload: Record<string, unknown> | null, cb: (arg: unknown) => void) => void;
-  };
-}
-
-interface TradingViewDataPoint {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
-interface TradingViewSearchResult {
-  symbol: string;
-  full_name: string;
-  description: string;
-  exchange: string;
-  ticker: string;
-  type: string;
-}
-
-interface UDFError {
-  code: number;
-  message: string;
-}
-
-const timeRanges = [
-  { label: "1D", value: "1d" as ChartRange },
-  { label: "5D", value: "5d" as ChartRange },
-  { label: "1M", value: "1mo" as ChartRange },
-  { label: "3M", value: "3mo" as ChartRange },
-  { label: "6M", value: "6mo" as ChartRange },
-  { label: "1Y", value: "1y" as ChartRange },
-  { label: "5Y", value: "5y" as ChartRange },
-];
-
-const rangeWindowSeconds: Record<ChartRange, number> = {
-  "1d": 1 * 24 * 60 * 60,
-  "5d": 5 * 24 * 60 * 60,
-  "1mo": 31 * 24 * 60 * 60,
-  "3mo": 92 * 24 * 60 * 60,
-  "6mo": 183 * 24 * 60 * 60,
-  "1y": 366 * 24 * 60 * 60,
-  "5y": 5 * 366 * 24 * 60 * 60,
-};
-
-const normalizeTimestamp = (value: number) =>
-  Math.abs(value) > 2e11 ? Math.floor(value / 1000) : Math.floor(value);
-
-const cleanSymbol = (symbol: string) => {
-  return (
-    symbol
-      .trim()
-      .toUpperCase()
-      .split(":")
-      .pop() || ""
-  );
-};
-
-const rangeToResolution: Record<ChartRange, string> = {
-  "1d": "5",
-  "5d": "15",
-  "1mo": "1D",
-  "3mo": "1D",
-  "6mo": "1D",
-  "1y": "1D",
-  "5y": "1W",
-};
-
-const supportedResolutions = ["1", "5", "15", "30", "60", "1D", "1W", "1M"];
-
-const createDatafeed = (symbol: string, activeRange: ChartRange) => {
-  return {
-    onReady: (cb: (config: unknown) => void) => {
-      cb({
-        supported_resolutions: supportedResolutions,
-        supports_search: true,
-        supports_group_request: false,
-        supports_marks: false,
-        supports_timescale_marks: false,
-        supports_time: true,
-      });
-    },
-    searchSymbols: (
-      userInput: string,
-      _exchange: string,
-      _type: string,
-      onResultReadyCallback: (results: TradingViewSearchResult[]) => void
-    ) => {
-      const query = userInput.trim();
-      if (!query) {
-        onResultReadyCallback([]);
-        return;
-      }
-
-      fetch(`/api/search?q=${encodeURIComponent(query)}`)
-        .then((response) => response.json())
-        .then((payload) => {
-          const results = (payload?.results || [])
-            .filter((item: { symbol?: string }) => Boolean(item?.symbol))
-            .map((item: { symbol: string; name?: string; type?: string; exchange?: string }) => ({
-              symbol: item.symbol.includes(":")
-                ? item.symbol
-                : item.exchange
-                  ? `${item.exchange}:${item.symbol}`
-                  : item.symbol,
-              full_name: item.symbol,
-              description: item.name || item.symbol,
-              exchange: item.exchange || "",
-              ticker: item.symbol,
-              type: (item.type || "stock").toLowerCase(),
-            })) as TradingViewSearchResult[];
-          onResultReadyCallback(results.slice(0, 30));
-        })
-        .catch(() => {
-          onResultReadyCallback([]);
-        });
-    },
-    resolveSymbol: (
-      _symbolName: string,
-      onSymbolResolvedCallback: (symbolInfo: Record<string, unknown>) => void,
-      onResolveErrorCallback: (error: UDFError) => void
-    ) => {
-      try {
-        const isCrypto = symbol.includes("-");
-        onSymbolResolvedCallback({
-          name: symbol,
-          ticker: symbol,
-          description: symbol,
-          type: isCrypto ? "crypto" : "stock",
-          session: isCrypto ? "24x7" : "0930-1600",
-          timezone: "America/New_York",
-          exchange: isCrypto ? "crypto" : "NASDAQ",
-          minmov: 1,
-          pricescale: 100,
-          has_intraday: true,
-          intraday_multipliers: ["1", "5", "15", "30", "60"],
-          supported_resolutions: supportedResolutions,
-          has_weekly_and_monthly: true,
-          volume_precision: 2,
-          data_status: "streamable",
-        });
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Unable to resolve symbol info";
-        onResolveErrorCallback({ code: 1, message });
-      }
-    },
-    getBars: async (
-      _symbolInfo: unknown,
-      resolution: string,
-      from: number,
-      to: number,
-      _firstDataRequest: boolean,
-      onHistoryCallback: (bars: TradingViewDataPoint[], info: { noData: boolean }) => void,
-      onErrorCallback: (error: UDFError) => void
-    ) => {
-      try {
-        const now = Math.floor(Date.now() / 1000);
-        const safeTo = Math.min(normalizeTimestamp(to), now);
-        const safeFrom = Math.max(
-          normalizeTimestamp(from),
-          Math.floor(safeTo - rangeWindowSeconds[activeRange])
-        );
-        const params = new URLSearchParams({
-          symbol,
-          from: `${safeFrom}`,
-          to: `${safeTo}`,
-          resolution,
-        });
-
-        const response = await fetch(`/api/tradingview/bars?${params.toString()}`);
-        const payload = await response.json();
-        const bars: TradingViewDataPoint[] = payload.bars || [];
-
-        if (!response.ok || bars.length === 0) {
-          onHistoryCallback([], { noData: true });
-          return;
-        }
-
-        onHistoryCallback(bars, { noData: false });
-      } catch {
-        onErrorCallback({ code: 1, message: "Failed to load bars" });
-      }
-    },
-    subscribeBars: () => {},
-    unsubscribeBars: () => {},
-    getServerTime: (cb: (time: number) => void) => cb(Math.floor(Date.now() / 1000)),
-  };
-};
-
-const loadTradingViewScript = (): Promise<void> => {
-  if (typeof window === "undefined") return Promise.reject();
-
-  const win = window as TradingViewWindow;
-  const existing = document.getElementById("tradingview-widget-script");
-
-  if (win.TradingView?.widget) {
-    return Promise.resolve();
-  }
-
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("TradingView script failed to load"))
-      );
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.id = "tradingview-widget-script";
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("TradingView script failed to load"));
-    document.head.appendChild(script);
-  });
-};
+import {
+  buildTimeframe,
+  cleanSymbol,
+  rangeToResolution,
+  timeRanges,
+} from "@/components/stock-chart/config";
+import { createDatafeed } from "@/components/stock-chart/datafeed";
+import {
+  buildShareUrl,
+  captureChartImage as captureChartImageFromWidget,
+  triggerDownload as triggerDownloadFile,
+} from "@/components/stock-chart/screenshot";
+import { loadTradingViewScript } from "@/components/stock-chart/tradingview";
+import type {
+  ChartRange,
+  TradingViewWidget,
+  TradingViewWindow,
+} from "@/components/stock-chart/types";
 
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
+  const [activeRange, setActiveRange] = useState<ChartRange>("1y");
   const chartContainerId = useMemo(
     () =>
       `tv-chart-container-${tickerSymbol
+        .concat("-", activeRange)
         .replace(/[^a-zA-Z0-9_-]/g, "-")
         .toLowerCase()}`,
-    [tickerSymbol]
+    [tickerSymbol, activeRange]
   );
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<TradingViewWidget | null>(null);
-  const [activeRange, setActiveRange] = useState<ChartRange>("1y");
   const [isLoading, setIsLoading] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isShareSaving, setIsShareSaving] = useState(false);
+  const [copyLinkDone, setCopyLinkDone] = useState(false);
+  const [copyLinkFailed, setCopyLinkFailed] = useState(false);
+  const [downloadDone, setDownloadDone] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
   const isRemovingRef = useRef(false);
   const isChartReadyRef = useRef(false);
   const buildIdRef = useRef(0);
-
-  const supportedRange = useMemo(
-    () =>
-      timeRanges.map((range) => ({
-        ...range,
-        resolution: rangeToResolution[range.value],
-      })),
-    []
-  );
+  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   const buildChart = async (buildId: number) => {
     if (!chartContainerRef.current) return;
@@ -297,6 +68,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
         autosize: true,
         symbol: tickerSymbol,
         interval: rangeToResolution[activeRange],
+        timeframe: buildTimeframe(activeRange),
         timezone: "America/New_York",
         theme: "Dark",
         locale: "en",
@@ -332,10 +104,20 @@ export default function StockChart({ symbol }: { symbol: string }) {
         if (buildId !== buildIdRef.current) {
           return;
         }
+        const applyVisibleRange = () => {
+          const { from, to } = buildTimeframe(activeRange);
+          const chartApi =
+            (widget.activeChart?.() as { setVisibleRange?: (range: { from: number; to: number }) => void } | undefined) ??
+            (widget.chart?.() as { setVisibleRange?: (range: { from: number; to: number }) => void } | undefined) ??
+            (widget.chart?.(0) as { setVisibleRange?: (range: { from: number; to: number }) => void } | undefined);
+          chartApi?.setVisibleRange?.({ from, to });
+        };
+        window.requestAnimationFrame(() => applyVisibleRange());
         isChartReadyRef.current = true;
         setIsLoading(false);
       });
     } catch {
+      // Script load or widget boot can fail transiently; leave the loading state clean.
       isChartReadyRef.current = false;
       setIsLoading(false);
     }
@@ -399,6 +181,22 @@ export default function StockChart({ symbol }: { symbol: string }) {
     };
   }, [tickerSymbol, activeRange]);
 
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+    };
+  }, []);
+
   const safeRemoveWidget = () => {
     const widget = widgetRef.current;
     if (!widget || isRemovingRef.current) return;
@@ -414,548 +212,110 @@ export default function StockChart({ symbol }: { symbol: string }) {
     }
   };
 
-  const downloadScreenshot = async () => {
-    if (!widgetRef.current || !chartContainerRef.current) return;
-    const widget = widgetRef.current as TradingViewWidget & {
-      onChartReady?: (cb: () => void) => void;
-    };
-    const captureSuffix = `${Math.floor(Date.now() / 1000)}`;
-    const safeSymbol = tickerSymbol.replace(/[^a-zA-Z0-9-_]/g, "_");
-    const triggerDownload = (url: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${safeSymbol.toUpperCase()}_${activeRange}_${captureSuffix}.png`;
-      link.rel = "noreferrer";
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      window.setTimeout(() => link.remove(), 0);
-    };
-
-    if (!isChartReadyRef.current) {
-      if (typeof widget.onChartReady === "function") {
-        await new Promise<void>((resolve) => {
-          widget.onChartReady?.(() => {
-            isChartReadyRef.current = true;
-            resolve();
-          });
-        });
-      } else {
-        await new Promise<void>((resolve) => setTimeout(resolve, 250));
-      }
-    }
-
-    if (!widgetRef.current) return;
-
-    const chartingWidget = widgetRef.current as TradingViewWidget & {
-      activeChart?: () => {
-        takeClientScreenshot?: (...args: unknown[]) => unknown;
-        takeScreenshot?: (...args: unknown[]) => unknown;
-        subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-        unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-      };
-      chart?: (index?: number) => {
-        takeClientScreenshot?: (...args: unknown[]) => unknown;
-        takeScreenshot?: (...args: unknown[]) => unknown;
-        subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-        unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-      };
-    };
-
-    const toDataUrl = async (shot: unknown): Promise<string | undefined> => {
-      const formatCreatedLabel = () =>
-        `Created on ${new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }).format(new Date())}`;
-
-      const stampCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-        const output = document.createElement("canvas");
-        output.width = canvas.width;
-        output.height = canvas.height;
-        const ctx = output.getContext("2d");
-        if (!ctx) return canvas;
-
-        ctx.drawImage(canvas, 0, 0);
-
-        const footerHeight = Math.max(30, Math.min(72, Math.round(output.height * 0.06)));
-        ctx.fillStyle = "#09090b";
-        ctx.fillRect(0, output.height - footerHeight, output.width, footerHeight);
-
-        const headerHeight = Math.min(44, Math.round(output.height * 0.045));
-        ctx.fillStyle = "#09090b";
-        ctx.fillRect(0, 0, output.width, headerHeight);
-
-        ctx.fillStyle = "#d4d4d8";
-        const fontSize = Math.max(11, Math.min(18, headerHeight - 6));
-        ctx.font = `${500} ${fontSize}px "Inter", Arial, sans-serif`;
-        ctx.textBaseline = "middle";
-        const label = formatCreatedLabel();
-        const metrics = ctx.measureText(label);
-        const textY = headerHeight / 2;
-        const maxTextWidth = Math.max(1, output.width - 24);
-        const scale = Math.min(1, maxTextWidth / Math.max(1, metrics.width));
-        ctx.save();
-        ctx.translate(12, textY);
-        ctx.scale(scale, 1);
-        ctx.fillText(label, 0, 0);
-        ctx.restore();
-
-        return output;
-      };
-
-      if (!shot) return;
-      if (typeof shot === "string") {
-        if (shot.startsWith("data:") || shot.startsWith("blob:") || shot.startsWith("http")) {
-          return shot;
-        }
-        return `data:image/png;base64,${shot}`;
-      }
-      if (shot instanceof HTMLCanvasElement) {
-        return stampCanvas(shot).toDataURL("image/png");
-      }
-      if (shot instanceof Blob) {
-        return await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(shot);
-        });
-      }
-      if (shot instanceof ArrayBuffer) {
-        const blob = new Blob([shot], { type: "image/png" });
-        return await toDataUrl(blob);
-      }
-      if (typeof shot === "object") {
-        const payload = shot as Record<string, unknown>;
-        if (typeof payload.base64 === "string") {
-          return payload.base64.startsWith("data:")
-            ? payload.base64
-            : `data:image/png;base64,${payload.base64}`;
-        }
-        if (typeof payload.data === "string") {
-          const data = payload.data;
-          return data.startsWith("data:") ? data : `data:image/png;base64,${data}`;
-        }
-        if (typeof payload.dataURL === "string") return payload.dataURL;
-        if (typeof payload.dataUri === "string") return payload.dataUri;
-        if (typeof payload.dataURI === "string") return payload.dataURI;
-        if (typeof payload.image === "string") return payload.image;
-        if (payload.blob instanceof Blob) {
-          return await toDataUrl(payload.blob);
-        }
-        if (typeof payload.blob === "string") {
-          return payload.blob.startsWith("data:")
-            ? payload.blob
-            : `data:image/png;base64,${payload.blob}`;
-        }
-        if (typeof payload.content === "string") return payload.content;
-        if (typeof payload.snapshot === "string") return payload.snapshot;
-      }
-    };
-
-      const invokeCaptureMethod = async (
-        method?: (...args: unknown[]) => unknown,
-      owner?: object,
-      preferredArgSets: unknown[][] = []
-    ): Promise<string | undefined> => {
-      if (typeof method !== "function") return;
-
-      const callArgsList = preferredArgSets.length ? preferredArgSets : [[]];
-
-      const callWithArgs = async (callArgs: unknown[]): Promise<string | undefined> => {
-        try {
-          const direct = await Promise.resolve(
-            (method as (...args: unknown[]) => unknown).apply(owner, callArgs)
-          );
-          return toDataUrl(direct);
-        } catch {
-          return;
-        }
-      };
-
-      for (const args of callArgsList) {
-        const preferredResult = await callWithArgs(args);
-        if (preferredResult) return preferredResult;
-      }
-
-      const normalizeResult = async (value: unknown): Promise<string | undefined> => {
-        if (value === undefined) return;
-        const direct = await toDataUrl(value);
-        if (direct) return direct;
-
-        if (value instanceof Promise) {
-          try {
-            return await toDataUrl(await value);
-          } catch {
-            return;
-          }
-        }
-        return;
-      };
-
-      const invokeWithArgs = async (args: unknown[]): Promise<string | undefined> => {
-        return await new Promise<string | undefined>((resolve) => {
-          let settled = false;
-          const timeout = window.setTimeout(() => {
-            if (settled) return;
-            settled = true;
-            resolve(undefined);
-          }, 4000);
-
-          const done = async (value: unknown) => {
-            if (settled) return;
-            settled = true;
-            window.clearTimeout(timeout);
-            resolve(await normalizeResult(value));
-          };
-
-          const callArgs = args.map((arg) =>
-            typeof arg === "function" ? done : arg
-          );
-
-          try {
-            const direct = (method as (...args: unknown[]) => unknown).apply(owner, callArgs);
-            if (direct !== undefined) {
-              normalizeResult(direct).then((value) => {
-                if (!settled && value) {
-                  settled = true;
-                  window.clearTimeout(timeout);
-                  resolve(value);
-                }
-              });
-            }
-          } catch {
-            window.clearTimeout(timeout);
-            if (!settled) {
-              settled = true;
-              resolve(undefined);
-            }
-          }
-        });
-      };
-
-      const callbackVariants: unknown[][] = [
-        [(value: unknown) => value],
-        [{ watermark: false }, (value: unknown) => value],
-        [{}, (value: unknown) => value],
-        [false, (value: unknown) => value],
-        [null, (value: unknown) => value],
-        [{ watermark: false, style: "light" }, (value: unknown) => value],
-        [{}, false, (value: unknown) => value],
-      ];
-
-      for (const args of callbackVariants) {
-        const callbackPayload = await invokeWithArgs(args);
-
-        if (callbackPayload) return callbackPayload;
-      }
-
-      return;
-    };
-
-      const takeFromObject = async (target?: {
-        takeClientScreenshot?: (...args: unknown[]) => unknown;
-        takeScreenshot?: (...args: unknown[]) => unknown;
-        getScreenshot?: (...args: unknown[]) => unknown;
-        image?: (...args: unknown[]) => unknown;
-      imageCanvas?: (...args: unknown[]) => unknown;
-      subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-      unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-      }) => {
-      if (!target) return;
-      const imageCanvasResult = await invokeCaptureMethod(target.imageCanvas, target, [
-        [{ watermark: false }],
-        [{}],
-      ]);
-      if (imageCanvasResult) return imageCanvasResult;
-
-      if (typeof target.takeClientScreenshot === "function") {
-        try {
-          const shot = await Promise.resolve(target.takeClientScreenshot());
-          const dataUrl = await toDataUrl(shot);
-          if (dataUrl) return dataUrl;
-        } catch {
-          // ignore
-        }
-
-        if (target.takeClientScreenshot.length >= 1) {
-          try {
-            const shot = await Promise.resolve(target.takeClientScreenshot({}));
-            return toDataUrl(shot);
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      if (typeof target.getScreenshot === "function") {
-        try {
-          const shot = await Promise.resolve(target.getScreenshot());
-          return toDataUrl(shot);
-        } catch {
-          // ignore
-        }
-      }
-
-      return;
-    };
-
-    const screenshotFromEvent = async (target: {
-      takeScreenshot?: (...args: unknown[]) => unknown;
-      subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-      unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-    }) => {
-      if (typeof target.takeScreenshot !== "function") return;
-      const takeScreenshot = target.takeScreenshot;
-
-      if (typeof target.subscribe !== "function" || typeof target.unsubscribe !== "function") {
-        return;
-      }
-
-      return await new Promise<string | undefined>((resolve) => {
-        let settled = false;
-        const timeout = window.setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          target.unsubscribe?.("onScreenshotReady", onReady);
-          resolve(undefined);
-        }, 5000);
-
-        const finalize = async (value: unknown) => {
-          if (settled) return;
-          settled = true;
-          window.clearTimeout(timeout);
-          target.unsubscribe?.("onScreenshotReady", onReady);
-          resolve(await toDataUrl(value));
-        };
-
-        const onReady = async (value: unknown) => {
-          try {
-            await finalize(value);
-          } catch {
-            if (!settled) {
-              settled = true;
-              target.unsubscribe?.("onScreenshotReady", onReady);
-              window.clearTimeout(timeout);
-              resolve(undefined);
-            }
-          }
-        };
-
-        target.subscribe?.("onScreenshotReady", onReady);
-
-        try {
-          if (takeScreenshot.length >= 1) {
-            takeScreenshot(onReady);
-            return;
-          }
-          takeScreenshot();
-        } catch {
-          settled = true;
-          target.unsubscribe?.("onScreenshotReady", onReady);
-          window.clearTimeout(timeout);
-          resolve(undefined);
-        }
-      });
-    };
-
-    const takeViaPostMessage = async (target: TradingViewWidget) => {
-      if (!target?.postMessage?.get) return;
-
-      const commands = ["takeScreenshot", "take_screenshot", "screenshot"];
-
-      for (const command of commands) {
-        const result = await new Promise<string | undefined>((resolve) => {
-          const timeout = window.setTimeout(() => {
-            window.clearTimeout(timeout);
-            resolve(undefined);
-          }, 3500);
-
-          try {
-            target.postMessage?.get?.(command, {}, (shot: unknown) => {
-              window.clearTimeout(timeout);
-              toDataUrl(shot).then((value) => resolve(value)).catch(() => resolve(undefined));
-            });
-          } catch {
-            window.clearTimeout(timeout);
-            resolve(undefined);
-          }
-        });
-
-        if (result) return result;
-      }
-
-      return;
-    };
-
-    const takeDirect = async () => {
-      return await takeFromObject(chartingWidget);
-    };
-
-    const takeChartObject = async () => {
-      const chartObj =
-        (chartingWidget.activeChart?.() as {
-          takeClientScreenshot?: (...args: unknown[]) => unknown;
-          takeScreenshot?: (...args: unknown[]) => unknown;
-          subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-          unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-        }) ??
-        (chartingWidget.chart?.() as {
-          takeClientScreenshot?: (...args: unknown[]) => unknown;
-          takeScreenshot?: (...args: unknown[]) => unknown;
-          subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-          unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-        }) ??
-        (chartingWidget.chart?.(0) as {
-          takeClientScreenshot?: (...args: unknown[]) => unknown;
-          takeScreenshot?: (...args: unknown[]) => unknown;
-          subscribe?: (event: string, callback: (arg: unknown) => void) => void;
-          unsubscribe?: (event: string, callback: (arg: unknown) => void) => void;
-        });
-
-      const chartResult = await takeFromObject(chartObj);
-      if (chartResult) return chartResult;
-
-      if (chartObj?.takeScreenshot) {
-        const eventResult = await screenshotFromEvent(chartObj);
-        if (eventResult) return eventResult;
-
-        const shot = await Promise.resolve(chartObj.takeScreenshot());
-        return toDataUrl(shot);
-      }
-      return;
-    };
-
-      const takeServer = async (target?: { takeScreenshot?: (...args: unknown[]) => unknown }) => {
-      if (!target?.takeScreenshot) return;
-      const takeScreenshot = target.takeScreenshot;
-
-      const normalize = (value: unknown): string | undefined => {
-        if (typeof value === "string") return value;
-        if (typeof value === "object" && value) {
-          const record = value as Record<string, unknown>;
-          if (typeof record.url === "string") return record.url;
-          if (typeof record.data === "string") return record.data;
-          if (typeof record.image === "string") return record.image;
-        }
-        return undefined;
-      };
-
-      try {
-        const direct = await Promise.resolve(takeScreenshot());
-        const directUrl = await toDataUrl(direct);
-        if (directUrl) return directUrl;
-      } catch {
-        // ignore and try callback form
-      }
-
-      return await new Promise<string | undefined>((resolve) => {
-        const timer = window.setTimeout(() => {
-          window.clearTimeout(timer);
-          resolve(undefined);
-        }, 4000);
-
-        const resolveWith = (shot: unknown) => {
-          window.clearTimeout(timer);
-          resolve(normalize(shot));
-        };
-
-        try {
-          if (takeScreenshot.length >= 1) {
-            try {
-              takeScreenshot(resolveWith);
-              return;
-            } catch {
-              // fall through
-            }
-          }
-          if (takeScreenshot.length >= 2) {
-            takeScreenshot({}, resolveWith);
-            return;
-          }
-        } catch {
-          resolve(undefined);
-          return;
-        }
-
-        resolve(undefined);
-      });
-    };
-
-    const directResult = await takeDirect();
-    if (directResult) {
-      triggerDownload(directResult);
-      return;
-    }
-
-    const chartObjResult = await takeChartObject();
-    if (chartObjResult) {
-      triggerDownload(chartObjResult);
-      return;
-    }
-
-    const directEventResult = await screenshotFromEvent(chartingWidget);
-    if (directEventResult) {
-      triggerDownload(directEventResult);
-      return;
-    }
-
-    const serverResult = await takeServer(chartingWidget);
-    if (serverResult) {
-      triggerDownload(serverResult);
-      return;
-    }
-
-    const messageResult = await takeViaPostMessage(chartingWidget);
-    if (messageResult) {
-      triggerDownload(messageResult);
-      return;
-    }
-
-    const chartServerResult = await takeServer(
-      (chartingWidget.activeChart?.() as { takeScreenshot?: (...args: unknown[]) => unknown }) ??
-      (chartingWidget.chart?.() as { takeScreenshot?: (...args: unknown[]) => unknown }) ??
-      (chartingWidget.chart?.(0) as { takeScreenshot?: (...args: unknown[]) => unknown })
-    );
-    if (chartServerResult) {
-      triggerDownload(chartServerResult);
-      return;
-    }
-
-    const own = Object.keys(chartingWidget);
-    const proto = Object.getPrototypeOf(chartingWidget) ?? {};
-    const protoMethods = Object.getOwnPropertyNames(proto);
-    console.warn(
-      "SnapCharts screenshot unavailable. Available widget methods:",
-      { own, protoMethods }
-    );
-
-    const canvases = Array.from(chartContainerRef.current.querySelectorAll("canvas"));
-    if (canvases.length === 0) return;
-
-    const bounds = chartContainerRef.current.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const output = document.createElement("canvas");
-    output.width = Math.max(1, Math.floor(bounds.width * dpr));
-    output.height = Math.max(1, Math.floor(bounds.height * dpr));
-    const ctx = output.getContext("2d");
-    if (!ctx) return;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "#09090b";
-    ctx.fillRect(0, 0, bounds.width, bounds.height);
-
-    canvases.forEach((canvas) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = rect.left - bounds.left;
-      const y = rect.top - bounds.top;
-      ctx.drawImage(canvas, x, y, rect.width, rect.height);
+  const triggerDownload = (url: string) => {
+    triggerDownloadFile(url, tickerSymbol, activeRange);
+  };
+
+  const showActionMessage = (message: string) => {
+    setActionMessage(message);
+    window.setTimeout(() => setActionMessage(""), 1500);
+  };
+
+  const captureChartImage = async (): Promise<string | undefined> => {
+    return captureChartImageFromWidget({
+      widgetRef,
+      chartContainerRef,
+      isChartReadyRef,
     });
+  };
 
-    const stampedDataUrl = await toDataUrl(output);
-    if (stampedDataUrl) {
-      triggerDownload(stampedDataUrl);
+  const handleDownloadPng = async () => {
+    setIsActionMenuOpen(false);
+    const data = await captureChartImage();
+    if (!data) {
+      showActionMessage("Could not capture chart image");
+      return;
+    }
+    triggerDownload(data);
+    setDownloadDone(true);
+    showActionMessage("✓ PNG download started");
+    window.setTimeout(() => setDownloadDone(false), 1500);
+  };
+
+  const copyShareUrl = async (shareUrl: string): Promise<boolean> => {
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copied = true;
+      } catch {
+        // Clipboard access can be denied by browser permissions; fall back to prompt.
+      }
+    }
+
+    if (!copied) {
+      const fallback = window.prompt("Copy this link", shareUrl);
+      copied = fallback !== null;
+    }
+    return copied;
+  };
+
+  const handleShareLink = async () => {
+    setIsActionMenuOpen(false);
+    setCopyLinkDone(false);
+    setCopyLinkFailed(false);
+    setIsShareSaving(true);
+    try {
+      const data = await captureChartImage();
+      if (!data) {
+        setCopyLinkFailed(true);
+        window.setTimeout(() => setCopyLinkFailed(false), 1500);
+        showActionMessage("Could not create chart link image");
+        return;
+      }
+
+      const response = await fetch("/api/charts/share", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          symbol: tickerSymbol,
+          range: activeRange,
+          imageData: data,
+        }),
+      });
+
+      if (!response.ok) {
+        setCopyLinkFailed(true);
+        window.setTimeout(() => setCopyLinkFailed(false), 1500);
+        showActionMessage("Could not create chart link");
+        return;
+      }
+
+      const payload = (await response.json()) as { id?: string; url?: string };
+      if (!payload?.id) {
+        setCopyLinkFailed(true);
+        window.setTimeout(() => setCopyLinkFailed(false), 1500);
+        showActionMessage("Could not create chart link");
+        return;
+      }
+
+      const shareUrl = buildShareUrl(payload.id);
+      const copied = await copyShareUrl(shareUrl);
+      if (copied) {
+        setCopyLinkDone(true);
+        showActionMessage("✓ Chart link copied");
+        window.setTimeout(() => setCopyLinkDone(false), 1500);
+      } else {
+        setCopyLinkFailed(true);
+        window.setTimeout(() => setCopyLinkFailed(false), 1500);
+        showActionMessage("Could not copy chart link");
+      }
+      return;
+
+    } finally {
+      setIsShareSaving(false);
     }
   };
 
@@ -963,7 +323,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     <div className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="flex items-center gap-0.5">
-          {supportedRange.map((range) => (
+          {timeRanges.map((range) => (
             <button
               key={range.value}
               onClick={() => setActiveRange(range.value)}
@@ -977,12 +337,50 @@ export default function StockChart({ symbol }: { symbol: string }) {
             </button>
           ))}
         </div>
-        <button
-          onClick={downloadScreenshot}
-          className="text-xs px-2.5 py-1.5 rounded-lg bg-zinc-800/40 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 transition-colors"
-        >
-          Download PNG
-        </button>
+        <div className="relative" ref={actionMenuRef}>
+          <button
+            onClick={() => setIsActionMenuOpen((v) => !v)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 hover:text-white border border-blue-500/30 transition-colors shadow-sm"
+            aria-expanded={isActionMenuOpen}
+            aria-haspopup="menu"
+          >
+            Export
+            <span className="ml-2 text-xs text-blue-200/80">▾</span>
+          </button>
+          {isActionMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-lg overflow-hidden z-20">
+              <button
+                onClick={handleShareLink}
+                disabled={isShareSaving}
+                className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isShareSaving
+                  ? "Creating chart link..."
+                  : copyLinkFailed
+                    ? "Unable to copy link"
+                    : copyLinkDone
+                    ? "✓ Chart link copied"
+                    : "Copy chart link"}
+              </button>
+              <button
+                onClick={handleDownloadPng}
+                className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800 border-t border-zinc-800"
+              >
+                {downloadDone ? "✓ Download started" : "Download PNG"}
+              </button>
+            </div>
+          )}
+          {(copyLinkDone || copyLinkFailed || downloadDone || actionMessage) && (
+            <div className="absolute right-0 top-full mt-2 px-2 py-1 rounded-md border border-emerald-500/40 bg-zinc-900/95 text-[11px] leading-tight text-emerald-200 shadow-lg z-40 whitespace-nowrap">
+              {actionMessage ||
+                (copyLinkDone
+                  ? "✓ Link copied"
+                  : copyLinkFailed
+                  ? "Could not create chart link"
+                  : "✓ PNG download started")}
+            </div>
+          )}
+        </div>
       </div>
       <div className="relative rounded-b-2xl overflow-hidden">
         {isLoading && (

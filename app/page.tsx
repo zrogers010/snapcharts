@@ -278,7 +278,7 @@ export default async function HomePage() {
               SnapCharts
             </p>
             <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-white">
-              Explore markets, charts, and company snapshots fast.
+              Explore markets and share chart ideas in real-time.
             </h1>
             <p className="mt-3 text-zinc-400 max-w-2xl">
               Find symbols quickly, open a live chart page with stats, and share your
@@ -309,7 +309,7 @@ export default async function HomePage() {
                     {group.items.map((item) => (
                       <Link
                         key={item.symbol}
-                        href={`/stock/${item.symbol}`}
+                        href={`/chart/${encodeURIComponent(item.symbol)}`}
                         className="py-3 flex items-center justify-between hover:text-blue-300"
                       >
                         <div>
@@ -346,7 +346,7 @@ export default async function HomePage() {
             </div>
           </section>
 
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <section className="bg-zinc-900/45 border border-zinc-800 rounded-2xl p-5">
               <SectionHeading title="Trending watchlists" description="Quick picks used by active users" />
               <div className="mt-4 grid sm:grid-cols-3 gap-3">
