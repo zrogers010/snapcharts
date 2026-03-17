@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
@@ -89,7 +82,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} min-h-screen antialiased`}>
+      <body className="min-h-screen antialiased">
         <div className="min-h-screen flex flex-col">
           <main className="flex-1">{children}</main>
           <footer className="border-t border-zinc-800/70 bg-zinc-950/80">

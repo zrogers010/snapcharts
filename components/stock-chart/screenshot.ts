@@ -323,6 +323,7 @@ export const captureChartImage = async ({
     if (typeof target.subscribe !== "function" || typeof target.unsubscribe !== "function") {
       return;
     }
+    const takeScreenshot = target.takeScreenshot;
 
     return await new Promise<string | undefined>((resolve) => {
       let settled = false;
@@ -357,11 +358,11 @@ export const captureChartImage = async ({
       target.subscribe?.("onScreenshotReady", onReady);
 
       try {
-        if (target.takeScreenshot.length >= 1) {
-          target.takeScreenshot(onReady);
+        if (takeScreenshot.length >= 1) {
+          takeScreenshot(onReady);
           return;
         }
-        target.takeScreenshot();
+        takeScreenshot();
       } catch {
         settled = true;
         target.unsubscribe?.("onScreenshotReady", onReady);
@@ -404,11 +405,18 @@ export const captureChartImage = async ({
     return await takeFromObject(chartingWidget);
   };
 
-  const takeChartObject = async () => {
-    const chartObj =
+  const getChartObject = (): ScreenshotTarget | undefined => {
+    const target =
       chartingWidget.activeChart?.() ??
       chartingWidget.chart?.() ??
       chartingWidget.chart?.(0);
+
+    if (!target || typeof target !== "object") return;
+    return target as ScreenshotTarget;
+  };
+
+  const takeChartObject = async () => {
+    const chartObj = getChartObject();
 
     const chartResult = await takeFromObject(chartObj);
     if (chartResult) return chartResult;
@@ -493,11 +501,7 @@ export const captureChartImage = async ({
   const messageResult = await takeViaPostMessage(chartingWidget);
   if (messageResult) return messageResult;
 
-  const chartServerResult = await takeServer(
-    chartingWidget.activeChart?.() ??
-    chartingWidget.chart?.() ??
-    chartingWidget.chart?.(0)
-  );
+  const chartServerResult = await takeServer(getChartObject());
   if (chartServerResult) return chartServerResult;
 
   const own = Object.keys(chartingWidget);

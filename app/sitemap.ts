@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+type SitemapEntry = MetadataRoute.Sitemap[number];
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
 const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
 
@@ -29,6 +31,18 @@ const trendingSymbols = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const today = new Date();
+  const topicEntries: SitemapEntry[] = discoverTopics.map((topic) => ({
+    url: `${normalizedSiteUrl}/discover?topic=${topic}`,
+    lastModified: today,
+    changeFrequency: "weekly",
+    priority: 0.55,
+  }));
+  const symbolEntries: SitemapEntry[] = trendingSymbols.map((symbol) => ({
+    url: `${normalizedSiteUrl}/chart/${encodeURIComponent(symbol)}`,
+    lastModified: today,
+    changeFrequency: "daily",
+    priority: 0.75,
+  }));
 
   return [
     {
@@ -43,17 +57,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 0.8,
     },
-    ...discoverTopics.map((topic) => ({
-      url: `${normalizedSiteUrl}/discover?topic=${topic}`,
-      lastModified: today,
-      changeFrequency: "weekly",
-      priority: 0.55,
-    })),
-    ...trendingSymbols.map((symbol) => ({
-      url: `${normalizedSiteUrl}/chart/${encodeURIComponent(symbol)}`,
-      lastModified: today,
-      changeFrequency: "daily",
-      priority: 0.75,
-    })),
+    ...topicEntries,
+    ...symbolEntries,
   ];
 }
