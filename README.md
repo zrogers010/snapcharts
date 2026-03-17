@@ -108,16 +108,67 @@ Make sure security group allows inbound traffic on `HOST_PORT` (80 by default).
 
 ### Environment variables (optional)
 
-| Variable   | Default   | Description              |
-| ---------- | --------- | ------------------------ |
-| `PORT`     | `3000`    | Port the server binds to |
-| `HOSTNAME` | `0.0.0.0` | Host the server binds to |
+| Variable            | Default   | Description                                 |
+| ------------------- | --------- | ------------------------------------------- |
+| `PORT`              | `3000`    | Port the server binds to                    |
+| `HOSTNAME`          | `0.0.0.0` | Host the server binds to                    |
+| `HOST_BIND_ADDRESS` | unset     | Optional host interface for Docker publish  |
 
 Example:
 
 ```bash
 docker run -p 8080:8080 -e PORT=8080 snap-charts
 ```
+
+### HTTPS with Nginx + Certbot on Amazon Linux 2023
+
+Run the app on loopback, then let Nginx own ports `80` and `443`.
+
+1. Redeploy the container on `127.0.0.1:3000`:
+
+```bash
+cd /opt/snapcharts
+HOST_PORT=3000 HOST_BIND_ADDRESS=127.0.0.1 ./scripts/deploy.sh
+```
+
+2. Install and start Nginx + Certbot:
+
+```bash
+sudo dnf install -y nginx certbot python3-certbot-nginx
+sudo systemctl enable --now nginx
+```
+
+3. Install the Nginx site config:
+
+```bash
+sudo cp deploy/nginx/snapcharts.conf.example /etc/nginx/conf.d/snapcharts.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+4. Request the certificate and enable HTTPS redirect:
+
+```bash
+sudo certbot --nginx \
+  -d snap-charts.com \
+  -d www.snap-charts.com \
+  --redirect \
+  --agree-tos \
+  -m you@example.com \
+  --no-eff-email
+```
+
+5. Verify renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+Before running Certbot, make sure:
+
+- DNS `A` records for `snap-charts.com` and `www.snap-charts.com` point to the EC2 public IP.
+- The EC2 security group allows inbound `80` and `443`.
+- The Nginx server name in `deploy/nginx/snapcharts.conf.example` matches your real domain.
 
 ---
 

@@ -10,6 +10,7 @@ IMAGE_NAME="${IMAGE_NAME:-snapcharts}"
 CONTAINER_NAME="${CONTAINER_NAME:-snapcharts}"
 HOST_PORT="${HOST_PORT:-80}"
 CONTAINER_PORT="${CONTAINER_PORT:-3000}"
+HOST_BIND_ADDRESS="${HOST_BIND_ADDRESS:-}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -97,11 +98,17 @@ ensure_repo() {
 build_and_deploy() {
   local commit
   local branch_name
+  local publish_target
   local repo_url
   commit="$(git -C "$APP_DIR" rev-parse --short HEAD)"
   branch_name="$(git -C "$APP_DIR" branch --show-current)"
   repo_url="$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo 'unknown')"
   local image_tag="${IMAGE_NAME}:${commit}"
+  publish_target="${HOST_PORT}:${CONTAINER_PORT}"
+
+  if [ -n "$HOST_BIND_ADDRESS" ]; then
+    publish_target="${HOST_BIND_ADDRESS}:${publish_target}"
+  fi
 
   log "Deploying ${repo_url} branch ${branch_name} at commit ${commit}"
   log "Building Docker image ${image_tag}..."
@@ -113,11 +120,11 @@ build_and_deploy() {
     docker rm -f "$CONTAINER_NAME"
   fi
 
-  log "Starting container ${CONTAINER_NAME} on port ${HOST_PORT}->${CONTAINER_PORT}..."
+  log "Starting container ${CONTAINER_NAME} on port ${publish_target}..."
   docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
-    -p "${HOST_PORT}:${CONTAINER_PORT}" \
+    -p "${publish_target}" \
     -e NODE_ENV=production \
     -e PORT="${CONTAINER_PORT}" \
     "$image_tag"
