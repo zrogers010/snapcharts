@@ -85,7 +85,7 @@ Use this one-command flow for future updates:
 ```bash
 sudo mkdir -p /opt
 sudo chown "$USER":"$USER" /opt
-REPO_URL=https://github.com/zrogers010/snap-charts.git BRANCH=main APP_DIR=/opt/snapcharts IMAGE_NAME=snapcharts CONTAINER_NAME=snapcharts HOST_PORT=80 ./scripts/deploy.sh
+REPO_URL=https://github.com/zrogers010/snapcharts.git BRANCH=main APP_DIR=/opt/snapcharts IMAGE_NAME=snapcharts CONTAINER_NAME=snapcharts HOST_PORT=80 ./scripts/deploy.sh
 ```
 
 2. For later deploys (after you’ve already pulled/cloned):

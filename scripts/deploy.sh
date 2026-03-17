@@ -96,9 +96,14 @@ ensure_repo() {
 
 build_and_deploy() {
   local commit
+  local branch_name
+  local repo_url
   commit="$(git -C "$APP_DIR" rev-parse --short HEAD)"
+  branch_name="$(git -C "$APP_DIR" branch --show-current)"
+  repo_url="$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo 'unknown')"
   local image_tag="${IMAGE_NAME}:${commit}"
 
+  log "Deploying ${repo_url} branch ${branch_name} at commit ${commit}"
   log "Building Docker image ${image_tag}..."
   docker build -t "$image_tag" "$APP_DIR"
   docker tag "$image_tag" "${IMAGE_NAME}:latest"
