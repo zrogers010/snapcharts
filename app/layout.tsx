@@ -4,6 +4,8 @@ import "./globals.css";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
+const googleAnalyticsId =
+  process.env.NEXT_PUBLIC_GA_ID || "G-PK7V0S3YCN";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -69,18 +71,22 @@ export default function RootLayout({
         <link rel="preconnect" href="https://query2.finance.yahoo.com" />
         <link rel="preconnect" href="https://query1.finance.yahoo.com" />
         <link rel="preconnect" href="https://s3.tradingview.com" />
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-VZX4R5JT2S"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-VZX4R5JT2S');
-          `}
-        </Script>
+        {googleAnalyticsId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${googleAnalyticsId}');
+              `}
+            </Script>
+          </>
+        ) : null}
       </head>
       <body className="min-h-screen antialiased">
         <div className="min-h-screen flex flex-col">
