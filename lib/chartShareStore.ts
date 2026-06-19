@@ -13,6 +13,7 @@ export interface SharedChartRecord {
 
 const SHARE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 500;
+export const MAX_SHARE_IMAGE_BYTES = 2_500_000;
 const STORE_DIR = path.join(process.cwd(), ".snapcharts-shares");
 const FILE_EXT = ".json";
 
@@ -147,6 +148,9 @@ export const saveShare = (input: {
   const imageData = normalizeDataUri(input.imageData);
   if (!imageData) {
     throw new Error("Invalid image payload");
+  }
+  if (Buffer.byteLength(imageData, "base64") > MAX_SHARE_IMAGE_BYTES) {
+    throw new Error("Image payload is too large");
   }
 
   const record: SharedChartRecord = {
