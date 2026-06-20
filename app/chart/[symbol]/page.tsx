@@ -1,14 +1,17 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import SharedChartDisplay from "@/components/SharedChartDisplay";
+import SnapshotActions from "@/components/SnapshotActions";
 import StockView from "@/app/stock/[symbol]/StockView";
 import { getShare } from "@/lib/chartShareStore";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
+
 type ChartPageProps = {
-  params: { symbol: string };
+  params: Promise<{ symbol: string }>;
 };
 
 const safeDecode = (value: string) => {
@@ -25,9 +28,16 @@ const normalizeRouteSymbol = (value: string) =>
 export async function generateMetadata({
   params,
 }: ChartPageProps): Promise<Metadata> {
-  const routeValue = safeDecode(params.symbol).trim();
+  const { symbol: routeSymbol } = await params;
+  const routeValue = safeDecode(routeSymbol).trim();
   const share = getShare(routeValue);
   if (share) {
+    const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
+    const sharePath = `/chart/${encodeURIComponent(routeValue)}`;
+    const imagePath = `/api/charts/share/${encodeURIComponent(share.id)}/image`;
+    const shareUrl = `${normalizedSiteUrl}${sharePath}`;
+    const imageUrl = `${normalizedSiteUrl}${imagePath}`;
+
     return {
       title: `${share.symbol} - ${share.range.toUpperCase()} Snapshot | SnapCharts`,
       description: `Shareable chart snapshot for ${share.symbol} (${share.range.toUpperCase()}).`,
@@ -35,8 +45,22 @@ export async function generateMetadata({
         title: `${share.symbol} Snapshot`,
         description: `Shareable chart snapshot for ${share.symbol}.`,
         type: "website",
-        url: `/chart/${encodeURIComponent(routeValue)}`,
+        url: shareUrl,
         siteName: "SnapCharts",
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: `${share.symbol} ${share.range.toUpperCase()} chart snapshot`,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${share.symbol} ${share.range.toUpperCase()} Snapshot`,
+        description: `Shareable chart snapshot for ${share.symbol}.`,
+        images: [imageUrl],
       },
     };
   }
@@ -66,12 +90,15 @@ export async function generateMetadata({
   };
 }
 
-export default function ChartSymbolPage({ params }: ChartPageProps) {
-  const routeValue = safeDecode(params.symbol).trim();
+export default async function ChartSymbolPage({ params }: ChartPageProps) {
+  const { symbol: routeSymbol } = await params;
+  const routeValue = safeDecode(routeSymbol).trim();
   const share = getShare(routeValue);
   if (share) {
     const createdAt = new Date(share.createdAt).toLocaleString();
     const imageSrc = `/api/charts/share/${share.id}/image`;
+    const shareUrl = `${siteUrl.replace(/\/$/, "")}/chart/${encodeURIComponent(share.id)}`;
+    const liveChartUrl = `/chart/${encodeURIComponent(share.symbol)}`;
     return (
       <main className="min-h-screen bg-[#09090b] text-zinc-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -89,6 +116,7 @@ export default function ChartSymbolPage({ params }: ChartPageProps) {
               range={share.range}
               imageSrc={imageSrc}
             />
+            <SnapshotActions shareUrl={shareUrl} liveChartUrl={liveChartUrl} />
             <div className="mt-4">
               <p className="text-xs text-zinc-500 mb-1">Share URL</p>
               <p className="text-sm text-zinc-300 break-all">

@@ -28,6 +28,7 @@ interface QuoteData {
   regularMarketDayHigh?: number;
   regularMarketDayLow?: number;
   regularMarketVolume?: number;
+  regularMarketTime?: number;
   averageDailyVolume3Month?: number;
   marketCap?: number;
   fiftyTwoWeekHigh?: number;
@@ -219,6 +220,12 @@ export default function StockView({ symbol }: { symbol: string }) {
             </span>
           </div>
         </div>
+
+        <QuoteContextStrip
+          quote={quote}
+          isCrypto={isCrypto}
+          isFuture={isFuture}
+        />
 
         {/* ── Chart ────────────────────────────────────────────── */}
         <div className="mb-8">
@@ -599,6 +606,77 @@ function InfoItem({ label, value }: { label: string; value: string }) {
       <div className="text-[11px] text-zinc-500 mb-0.5">{label}</div>
       <div className="text-sm text-white font-medium">{value}</div>
     </div>
+  );
+}
+
+function QuoteContextStrip({
+  quote,
+  isCrypto,
+  isFuture,
+}: {
+  quote: QuoteData;
+  isCrypto: boolean;
+  isFuture: boolean;
+}) {
+  const timestamp = quote.regularMarketTime
+    ? timeAgo(quote.regularMarketTime)
+    : null;
+  const volumeValue =
+    isCrypto && (quote.volume24Hr != null || quote.volumeAllCurrencies != null)
+      ? formatLargeNumber(quote.volume24Hr ?? quote.volumeAllCurrencies)
+      : formatNumber(quote.regularMarketVolume);
+
+  const items = [
+    {
+      label: "Day Range",
+      value: `${formatCurrency(quote.regularMarketDayLow)} - ${formatCurrency(quote.regularMarketDayHigh)}`,
+    },
+    {
+      label: isFuture ? "Contract Volume" : isCrypto ? "24h Volume" : "Volume",
+      value: volumeValue,
+    },
+    {
+      label: "52 Week",
+      value: `${formatCurrency(quote.fiftyTwoWeekLow)} - ${formatCurrency(quote.fiftyTwoWeekHigh)}`,
+    },
+    {
+      label: "Market Cap",
+      value:
+        quote.marketCap != null
+          ? formatLargeNumber(quote.marketCap)
+          : isCrypto && quote.circulatingSupply != null
+          ? formatLargeNumber(quote.circulatingSupply)
+          : "—",
+    },
+    {
+      label: "Previous Close",
+      value: formatCurrency(quote.regularMarketPreviousClose),
+    },
+  ];
+
+  return (
+    <section className="mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-zinc-800/60 bg-zinc-900/45 px-3 py-3 min-h-20"
+          >
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+              {item.label}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-zinc-100 tabular-nums break-words">
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      {timestamp && (
+        <p className="mt-2 text-[11px] text-zinc-600">
+          Quote delayed. Updated {timestamp}.
+        </p>
+      )}
+    </section>
   );
 }
 

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  getMarketQuotes,
+  type MarketQuote,
+  type QuoteSeed,
+} from "@/lib/marketData";
 
 export const metadata: Metadata = {
   title: "Discover | SnapCharts",
@@ -145,20 +150,40 @@ const discoverTopics: DiscoverTopic[] = [
   },
 ];
 
+const defaultMoverSeeds: QuoteSeed[] = [
+  { symbol: "NVDA", name: "NVIDIA Corp." },
+  { symbol: "TSLA", name: "Tesla, Inc." },
+  { symbol: "MSTR", name: "MicroStrategy, Inc." },
+  { symbol: "BTC-USD", name: "Bitcoin" },
+  { symbol: "ETH-USD", name: "Ethereum" },
+  { symbol: "ES=F", name: "E-mini S&P 500" },
+  { symbol: "NQ=F", name: "E-mini Nasdaq-100" },
+  { symbol: "CL=F", name: "Crude Oil" },
+];
+
 type SearchParams = {
   topic?: string | string[];
 };
 
-export default function DiscoverPage({
+export default async function DiscoverPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const selectedTopic = Array.isArray(searchParams?.topic)
-    ? searchParams.topic[0]
-    : searchParams?.topic || "";
+  const resolvedSearchParams = await searchParams;
+  const selectedTopic = Array.isArray(resolvedSearchParams?.topic)
+    ? resolvedSearchParams.topic[0]
+    : resolvedSearchParams?.topic || "";
   const selectedTopicSlug = selectedTopic.toLowerCase();
   const activeTopic = discoverTopics.find((topic) => topic.slug === selectedTopicSlug);
+  const [activeQuotes, movers] = await Promise.all([
+    activeTopic ? getMarketQuotes(activeTopic.symbols) : Promise.resolve([]),
+    getMarketQuotes(defaultMoverSeeds),
+  ]);
+  const topMovers = movers
+    .slice()
+    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
+    .slice(0, 4);
 
   return (
     <main className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -183,6 +208,18 @@ export default function DiscoverPage({
         ))}
       </div>
 
+      <section className="mt-8">
+        <SectionHeading
+          title="Live movers"
+          description="Largest moves across active SnapCharts watch symbols"
+        />
+        <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {topMovers.map((quote) => (
+            <QuoteCard key={quote.symbol} quote={quote} compact />
+          ))}
+        </div>
+      </section>
+
       <section className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
         {activeTopic ? (
           <>
@@ -190,16 +227,9 @@ export default function DiscoverPage({
             <p className="text-sm text-zinc-500 mt-1">
               {activeTopic.description}
             </p>
-            <div className="mt-4 space-y-2">
-              {activeTopic.symbols.map((item) => (
-                <Link
-                  key={item.symbol}
-                  href={`/chart/${encodeURIComponent(item.symbol)}`}
-                  className="flex items-center justify-between border border-zinc-800 rounded-xl p-3 hover:bg-zinc-800/50 transition-colors"
-                >
-                  <span className="text-sm text-zinc-200">{item.name}</span>
-                  <span className="text-xs text-blue-300">{item.symbol}</span>
-                </Link>
+            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {activeQuotes.map((quote) => (
+                <QuoteCard key={quote.symbol} quote={quote} />
               ))}
             </div>
           </>
@@ -207,11 +237,80 @@ export default function DiscoverPage({
           <>
             <h2 className="text-lg font-semibold text-white">Choose a topic</h2>
             <p className="text-sm text-zinc-500 mt-1">
-              Select a button above to view symbols and open them from the list.
+              Select a button above to view live quote cards for that setup.
             </p>
+            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {discoverTopics.slice(0, 6).map((topic) => (
+                <Link
+                  key={topic.slug}
+                  href={`/discover?topic=${topic.slug}`}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 hover:bg-zinc-800/60 transition-colors"
+                >
+                  <span className="text-sm font-semibold text-zinc-100">
+                    {topic.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-zinc-500">
+                    {topic.symbols.map((item) => item.symbol).join(" / ")}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </>
         )}
       </section>
     </main>
+  );
+}
+
+function SectionHeading({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-white">{title}</h2>
+      <p className="text-sm text-zinc-500">{description}</p>
+    </div>
+  );
+}
+
+function QuoteCard({
+  quote,
+  compact = false,
+}: {
+  quote: MarketQuote;
+  compact?: boolean;
+}) {
+  const up = quote.changePercent >= 0;
+  return (
+    <Link
+      href={`/chart/${encodeURIComponent(quote.symbol)}`}
+      className={`block rounded-xl border border-zinc-800 bg-zinc-900/70 hover:bg-zinc-800/60 transition-colors ${
+        compact ? "p-3" : "p-4"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{quote.symbol}</p>
+          <p className="mt-0.5 text-xs text-zinc-500 truncate">{quote.name}</p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+            up
+              ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300"
+              : "border-red-300/30 bg-red-300/10 text-red-300"
+          }`}
+        >
+          {up ? "+" : ""}
+          {quote.changePercent.toFixed(2)}%
+        </span>
+      </div>
+      <p className="mt-3 text-lg font-bold text-zinc-100 tabular-nums">
+        {quote.price}
+      </p>
+    </Link>
   );
 }

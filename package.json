@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test": "npm run test:unit",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit",
     "smoke:routes": "node scripts/smoke-routes.mjs",
     "start": "next start"
   },
   "dependencies": {
     "lightweight-charts": "^4.1.7",
-    "next": "^14.2.15",
+    "next": "^15.5.19",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "yahoo-finance2": "^3.13.0"
@@ -20,8 +23,12 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.15",
     "tailwindcss": "^3.4.4",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "postcss": "$postcss"
   }
 }

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
 type LegacySnapshotPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-export default function LegacySnapshotPage({ params }: LegacySnapshotPageProps) {
-  redirect(`/chart/${encodeURIComponent(params.id)}`);
+export default async function LegacySnapshotPage({ params }: LegacySnapshotPageProps) {
+  const { id } = await params;
+  redirect(`/chart/${encodeURIComponent(id)}`);
 }

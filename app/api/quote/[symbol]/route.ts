@@ -3,10 +3,11 @@ import yahooFinance from "@/lib/yahoo";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const symbol = params.symbol.toUpperCase();
+    const { symbol: routeSymbol } = await params;
+    const symbol = routeSymbol.toUpperCase();
     const quote = await yahooFinance.quote(symbol);
 
     const quoteType = (quote as any)?.quoteType || "EQUITY";

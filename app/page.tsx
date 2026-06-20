@@ -4,6 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import yahooFinance from "@/lib/yahoo";
 import { timeAgo } from "@/lib/format";
+import {
+  getMarketQuotes,
+  getSafeRemoteImageUrl,
+  type MarketQuote,
+  type QuoteSeed,
+} from "@/lib/marketData";
 import type { Metadata } from "next";
 
 export const revalidate = 900;
@@ -42,16 +48,9 @@ export const metadata: Metadata = {
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
 
-type TickerStat = {
-  symbol: string;
-  name: string;
-  price?: string;
-  change: number;
-};
-
 type PulseGroup = {
   title: string;
-  items: TickerStat[];
+  items: QuoteSeed[];
   color: string;
 };
 
@@ -68,30 +67,30 @@ const marketPulse: PulseGroup[] = [
     title: "Stocks",
     color: "from-blue-500/20 to-blue-500/5",
     items: [
-      { symbol: "AAPL", name: "Apple", price: "$233.12", change: 1.8 },
-      { symbol: "MSFT", name: "Microsoft", price: "$421.06", change: 2.4 },
-      { symbol: "NVDA", name: "NVIDIA", price: "$950.44", change: -0.9 },
-      { symbol: "TSLA", name: "Tesla", price: "$165.31", change: 0.7 },
+      { symbol: "AAPL", name: "Apple" },
+      { symbol: "MSFT", name: "Microsoft" },
+      { symbol: "NVDA", name: "NVIDIA" },
+      { symbol: "TSLA", name: "Tesla" },
     ],
   },
   {
     title: "Crypto",
     color: "from-amber-500/20 to-amber-500/5",
     items: [
-      { symbol: "BTC-USD", name: "Bitcoin", price: "$68,420", change: 3.2 },
-      { symbol: "ETH-USD", name: "Ethereum", price: "$3,742", change: 2.1 },
-      { symbol: "SOL-USD", name: "Solana", price: "$154.03", change: -1.4 },
-      { symbol: "AVAX-USD", name: "Avalanche", price: "$32.88", change: 1.1 },
+      { symbol: "BTC-USD", name: "Bitcoin" },
+      { symbol: "ETH-USD", name: "Ethereum" },
+      { symbol: "SOL-USD", name: "Solana" },
+      { symbol: "AVAX-USD", name: "Avalanche" },
     ],
   },
   {
     title: "Futures",
     color: "from-emerald-500/20 to-emerald-500/5",
     items: [
-      { symbol: "ES=F", name: "S&P 500", price: "5602", change: 0.6 },
-      { symbol: "NQ=F", name: "Nasdaq", price: "19020", change: 1.3 },
-      { symbol: "CL=F", name: "Crude Oil", price: "$73.41", change: -0.8 },
-      { symbol: "GC=F", name: "Gold", price: "$2,352", change: 0.5 },
+      { symbol: "ES=F", name: "S&P 500" },
+      { symbol: "NQ=F", name: "Nasdaq" },
+      { symbol: "CL=F", name: "Crude Oil" },
+      { symbol: "GC=F", name: "Gold" },
     ],
   },
 ];
@@ -158,10 +157,12 @@ async function fetchSymbolNews(symbol: string): Promise<News[]> {
             ).toISOString()
           : null,
         image:
-          article.thumbnail?.resolutions?.[0]?.url ||
-          article.thumbnail?.resolutions?.[1]?.url ||
-          article.thumbnail ||
-          newsImageFallback,
+          getSafeRemoteImageUrl(
+            article.thumbnail?.resolutions?.[0]?.url ||
+              article.thumbnail?.resolutions?.[1]?.url ||
+              article.thumbnail,
+            newsImageFallback
+          ),
       }));
   } catch {
     return [];
@@ -217,6 +218,24 @@ const chipThemes = [
   { label: "Swing", slug: "swing" },
 ];
 
+async function getMarketPulseGroups() {
+  const quotedGroups = await Promise.all(
+    marketPulse.map(async (group) => ({
+      ...group,
+      items: await getMarketQuotes(group.items),
+    }))
+  );
+
+  const latestUpdatedAt = quotedGroups
+    .flatMap((group) => group.items)
+    .map((item) => item.updatedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+
+  return { quotedGroups, latestUpdatedAt };
+}
+
 function ChangePill({ value }: { value: number }) {
   const up = value >= 0;
   return (
@@ -228,13 +247,16 @@ function ChangePill({ value }: { value: number }) {
       }`}
     >
       {up ? "+" : ""}
-      {value.toFixed(1)}%
+      {value.toFixed(2)}%
     </span>
   );
 }
 
 export default async function HomePage() {
-  const latestNews = await getLatestMarketNews();
+  const [latestNews, marketPulseData] = await Promise.all([
+    getLatestMarketNews(),
+    getMarketPulseGroups(),
+  ]);
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
 
   const newsSchema = {
@@ -294,10 +316,14 @@ export default async function HomePage() {
           <div>
             <SectionHeading
               title="Market Pulse"
-              description="Fast movers across stocks, crypto, and futures"
+              description={
+                marketPulseData.latestUpdatedAt
+                  ? `Live delayed quotes as of ${timeAgo(marketPulseData.latestUpdatedAt)}`
+                  : "Live delayed quotes across stocks, crypto, and futures"
+              }
             />
             <div className="grid lg:grid-cols-3 gap-4 mt-4">
-              {marketPulse.map((group) => (
+              {marketPulseData.quotedGroups.map((group) => (
                 <div
                   key={group.title}
                   className={`rounded-2xl border border-zinc-800 bg-gradient-to-br ${group.color} p-4`}
@@ -306,7 +332,7 @@ export default async function HomePage() {
                     {group.title}
                   </h3>
                   <div className="mt-4 divide-y divide-zinc-700/40">
-                    {group.items.map((item) => (
+                    {group.items.map((item: MarketQuote) => (
                       <Link
                         key={item.symbol}
                         href={`/chart/${encodeURIComponent(item.symbol)}`}
@@ -318,7 +344,7 @@ export default async function HomePage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-white">{item.price ?? "—"}</p>
-                          <ChangePill value={item.change} />
+                          <ChangePill value={item.changePercent} />
                         </div>
                       </Link>
                     ))}
