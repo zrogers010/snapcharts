@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Header from "@/components/Header";
 import {
   getMarketQuotes,
   type MarketQuote,
@@ -186,79 +187,84 @@ export default async function DiscoverPage({
     .slice(0, 4);
 
   return (
-    <main className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-2xl font-bold text-white">Discover</h1>
-      <p className="text-sm text-zinc-400 mt-2">
-        Pick a setup theme to open the related symbol list.
-      </p>
+    <>
+      <Header />
+      <main className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <h1 className="text-2xl font-bold text-white">Discover</h1>
+        <p className="text-sm text-zinc-400 mt-2">
+          Pick a setup theme to open the related symbol list.
+        </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {discoverTopics.map((topic) => (
-          <Link
-            key={topic.slug}
-            href={`/discover?topic=${topic.slug}`}
-            className={`px-3 py-2 rounded-full text-xs border ${
-              activeTopic?.slug === topic.slug
-                ? "bg-blue-500/20 text-blue-300 border-blue-400/60"
-                : "bg-zinc-900 border-zinc-700 text-zinc-200"
-            }`}
-          >
-            {topic.label}
-          </Link>
-        ))}
-      </div>
-
-      <section className="mt-8">
-        <SectionHeading
-          title="Live movers"
-          description="Largest moves across active SnapCharts watch symbols"
-        />
-        <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {topMovers.map((quote) => (
-            <QuoteCard key={quote.symbol} quote={quote} compact />
+        <div className="mt-6 flex flex-wrap gap-2">
+          {discoverTopics.map((topic) => (
+            <Link
+              key={topic.slug}
+              href={`/discover?topic=${topic.slug}`}
+              className={`px-3 py-2 rounded-full text-xs border ${
+                activeTopic?.slug === topic.slug
+                  ? "bg-blue-500/20 text-blue-300 border-blue-400/60"
+                  : "bg-zinc-900 border-zinc-700 text-zinc-200"
+              } min-h-8 touch-manipulation transition-colors hover:border-blue-400/60 hover:text-blue-300`}
+            >
+              {topic.label}
+            </Link>
           ))}
         </div>
-      </section>
 
-      <section className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-        {activeTopic ? (
-          <>
-            <h2 className="text-lg font-semibold text-white">{activeTopic.label}</h2>
-            <p className="text-sm text-zinc-500 mt-1">
-              {activeTopic.description}
-            </p>
-            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activeQuotes.map((quote) => (
-                <QuoteCard key={quote.symbol} quote={quote} />
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <h2 className="text-lg font-semibold text-white">Choose a topic</h2>
-            <p className="text-sm text-zinc-500 mt-1">
-              Select a button above to view live quote cards for that setup.
-            </p>
-            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {discoverTopics.slice(0, 6).map((topic) => (
-                <Link
-                  key={topic.slug}
-                  href={`/discover?topic=${topic.slug}`}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 hover:bg-zinc-800/60 transition-colors"
-                >
-                  <span className="text-sm font-semibold text-zinc-100">
-                    {topic.label}
-                  </span>
-                  <span className="mt-1 block text-xs text-zinc-500">
-                    {topic.symbols.map((item) => item.symbol).join(" / ")}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-    </main>
+        <section className="mt-8">
+          <SectionHeading
+            title="Live movers"
+            description="Largest moves across active SnapCharts watch symbols"
+          />
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {topMovers.map((quote) => (
+              <QuoteCard key={quote.symbol} quote={quote} compact />
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          {activeTopic ? (
+            <>
+              <h2 className="text-lg font-semibold text-white">
+                {activeTopic.label}
+              </h2>
+              <p className="text-sm text-zinc-500 mt-1">
+                {activeTopic.description}
+              </p>
+              <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeQuotes.map((quote) => (
+                  <QuoteCard key={quote.symbol} quote={quote} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-white">Choose a topic</h2>
+              <p className="text-sm text-zinc-500 mt-1">
+                Select a button above to view live quote cards for that setup.
+              </p>
+              <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {discoverTopics.slice(0, 6).map((topic) => (
+                  <Link
+                    key={topic.slug}
+                    href={`/discover?topic=${topic.slug}`}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 hover:bg-zinc-800/60 transition-colors"
+                  >
+                    <span className="text-sm font-semibold text-zinc-100">
+                      {topic.label}
+                    </span>
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      {topic.symbols.map((item) => item.symbol).join(" / ")}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -309,8 +315,11 @@ function QuoteCard({
         </span>
       </div>
       <p className="mt-3 text-lg font-bold text-zinc-100 tabular-nums">
-        {quote.price}
+        {quote.price ?? "—"}
       </p>
+      {!compact ? (
+        <p className="mt-2 text-xs font-semibold text-blue-300">Open chart</p>
+      ) : null}
     </Link>
   );
 }

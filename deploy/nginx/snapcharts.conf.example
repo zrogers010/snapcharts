@@ -1,7 +1,7 @@
 server {
   listen 80;
   listen [::]:80;
-  server_name snap-charts.com www.snap-charts.com;
+  server_name snapcharts.com www.snapcharts.com;
 
   location / {
     proxy_pass http://127.0.0.1:3000;

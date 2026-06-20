@@ -252,8 +252,16 @@ export default function SearchBox({
       )}
 
       {isOpen && query.trim().length > 0 && !isLoading && results.length === 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 px-4 py-3 text-zinc-500 text-sm">
-          No matching symbols found
+        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 px-4 py-3 text-sm z-50">
+          <p className="text-zinc-400">No matching symbols found</p>
+          <button
+            type="button"
+            onClick={() => navigate(query.trim().toUpperCase())}
+            className="mt-2 text-left text-xs font-semibold text-blue-300 hover:text-blue-200"
+          >
+            Open {normalizeSymbolForRoute(query) || query.trim().toUpperCase()}{" "}
+            as a symbol
+          </button>
         </div>
       )}
     </div>

@@ -1,8 +1,8 @@
-# Snap Charts — Stock Charts & Financial Data
+# SnapCharts — Stock Charts & Financial Data
 
-A fast, modern stock market dashboard with interactive charts, key statistics, financial metrics, company profiles, and news — powered by Yahoo Finance data. Live at [snap-charts.com](https://snap-charts.com).
+A fast, modern stock market dashboard with interactive charts, key statistics, financial metrics, company profiles, and news — powered by Yahoo Finance data. Live at [snapcharts.com](https://snapcharts.com).
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4) ![License](https://img.shields.io/badge/license-MIT-green)
+![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
@@ -27,8 +27,8 @@ No API keys required — data is fetched server-side from Yahoo Finance.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/zrogers010/snap-charts.git
-cd snap-charts
+git clone https://github.com/zrogers010/snapcharts.git
+cd snapcharts
 ```
 
 ### 2. Install dependencies
@@ -65,13 +65,13 @@ A multi-stage Dockerfile is included for lightweight production images.
 ### Build the image
 
 ```bash
-docker build -t snap-charts .
+docker build -t snapcharts .
 ```
 
 ### Run the container
 
 ```bash
-docker run -p 3000:3000 snap-charts
+docker run -p 3000:3000 snapcharts
 ```
 
 The app is now live at [http://localhost:3000](http://localhost:3000).
@@ -117,7 +117,7 @@ Make sure security group allows inbound traffic on `HOST_PORT` (80 by default).
 Example:
 
 ```bash
-docker run -p 8080:8080 -e PORT=8080 snap-charts
+docker run -p 8080:8080 -e PORT=8080 snapcharts
 ```
 
 ### HTTPS with Nginx + Certbot on Amazon Linux 2023
@@ -150,8 +150,8 @@ sudo systemctl reload nginx
 
 ```bash
 sudo certbot --nginx \
-  -d snap-charts.com \
-  -d www.snap-charts.com \
+  -d snapcharts.com \
+  -d www.snapcharts.com \
   --redirect \
   --agree-tos \
   -m you@example.com \
@@ -166,9 +166,17 @@ sudo certbot renew --dry-run
 
 Before running Certbot, make sure:
 
-- DNS `A` records for `snap-charts.com` and `www.snap-charts.com` point to the EC2 public IP.
+- DNS `A` records for `snapcharts.com` and `www.snapcharts.com` point to the EC2 public IP.
 - The EC2 security group allows inbound `80` and `443`.
 - The Nginx server name in `deploy/nginx/snapcharts.conf.example` matches your real domain.
+
+### Production readiness checklist
+
+- Set `NEXT_PUBLIC_SITE_URL=https://snapcharts.com`.
+- Set `NEXT_PUBLIC_GA_ID` only when Google Analytics should be enabled.
+- Run `npm audit --omit=dev`, `npm run test:unit`, `npm run typecheck`, `npm run build`, and `npm run smoke:routes` before deploying.
+- After deploy, run `npm run smoke:production` or `SMOKE_BASE_URL=https://snapcharts.com npm run smoke:routes`.
+- Verify `/robots.txt`, `/sitemap.xml`, `/discover`, `/chart/AAPL`, and chart share creation.
 
 ---
 
@@ -202,7 +210,7 @@ Before running Certbot, make sure:
 
 ## Tech Stack
 
-- **[Next.js 14](https://nextjs.org/)** — App Router, API routes, server components
+- **[Next.js 15](https://nextjs.org/)** — App Router, API routes, server components
 - **[TailwindCSS](https://tailwindcss.com/)** — Utility-first styling
 - **[Lightweight Charts](https://tradingview.github.io/lightweight-charts/)** — Interactive financial charts
 - **[yahoo-finance2](https://github.com/nickvdyck/yahoo-finance2)** — Yahoo Finance data (no API key needed)

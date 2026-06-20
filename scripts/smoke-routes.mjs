@@ -7,7 +7,7 @@ const routes = [
   { path: "/chart/BTC-USD", text: "BTC-USD" },
   { path: "/discover", text: "Discover" },
   { path: "/robots.txt", text: "sitemap" },
-  { path: "/sitemap.xml", text: "snap-charts.com" },
+  { path: "/sitemap.xml", text: "snapcharts.com" },
 ];
 
 const onePixelPng =
@@ -86,7 +86,10 @@ function assert(condition, message) {
 }
 
 async function run() {
-  const { baseUrl, child } = await startServer();
+  const targetUrl = process.env.SMOKE_BASE_URL?.trim();
+  const { baseUrl, child } = targetUrl
+    ? { baseUrl: targetUrl.replace(/\/$/, ""), child: null }
+    : await startServer();
   try {
     for (const route of routes) {
       const response = await fetch(new URL(route.path, baseUrl));
@@ -118,7 +121,7 @@ async function run() {
     );
     console.log(`Route smoke checks passed against ${baseUrl}`);
   } finally {
-    child.kill("SIGTERM");
+    child?.kill("SIGTERM");
   }
 }
 

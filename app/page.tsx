@@ -10,6 +10,7 @@ import {
   type MarketQuote,
   type QuoteSeed,
 } from "@/lib/marketData";
+import { getSiteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 
 export const revalidate = 900;
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
   },
 };
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
+const siteUrl = getSiteUrl();
 
 type PulseGroup = {
   title: string;
@@ -108,6 +109,13 @@ const watchlists = [
     title: "High Beta",
     symbols: ["TSLA", "SOFI", "MARA", "RIOT", "NVDA"],
   },
+];
+
+const heroLinks = [
+  { label: "AAPL", href: "/chart/AAPL" },
+  { label: "NVDA", href: "/chart/NVDA" },
+  { label: "BTC", href: "/chart/BTC-USD" },
+  { label: "S&P futures", href: "/chart/ES%3DF" },
 ];
 
 const newsWatchlistSymbols = [
@@ -309,6 +317,18 @@ export default async function HomePage() {
             <div className="mt-6 max-w-2xl">
               <SearchBox large />
             </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-zinc-500">Popular:</span>
+              {heroLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1.5 text-zinc-300 transition-colors hover:border-blue-400/60 hover:text-blue-300"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -379,7 +399,17 @@ export default async function HomePage() {
                 {watchlists.map((list) => (
                   <div key={list.title} className="bg-zinc-800/45 border border-zinc-700 rounded-xl p-4">
                     <h3 className="text-sm font-semibold text-white">{list.title}</h3>
-                    <p className="text-zinc-500 text-xs mt-2">{list.symbols.join(" • ")}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {list.symbols.map((symbol) => (
+                        <Link
+                          key={symbol}
+                          href={`/chart/${encodeURIComponent(symbol)}`}
+                          className="rounded-md border border-zinc-700/80 bg-zinc-900/60 px-2 py-1 text-[11px] font-semibold text-zinc-300 hover:border-blue-400/60 hover:text-blue-300"
+                        >
+                          {symbol}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -387,41 +417,50 @@ export default async function HomePage() {
 
             <section className="bg-zinc-900/45 border border-zinc-800 rounded-2xl p-5">
               <SectionHeading title="Latest market headlines" description="Signals worth watching" />
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {latestNews.map((item) => (
-                  <a
-                    key={`${item.publisher}-${item.title}`}
-                    href={item.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-4 hover:bg-zinc-800/40 hover:border-zinc-700/50 transition-all group flex gap-4"
-                  >
-                    {item.image && (
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        loading="lazy"
-                        width={160}
-                        height={160}
-                        sizes="(max-width: 768px) 80px, 160px"
-                        className="w-20 h-20 object-cover rounded-xl flex-shrink-0 bg-zinc-800"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-zinc-200 group-hover:text-blue-400 transition-colors line-clamp-2 mb-1.5">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs text-zinc-600">
-                        <span>{item.publisher}</span>
-                        <span className="text-zinc-700">•</span>
-                        <span>
-                          {item.publishedAt ? timeAgo(item.publishedAt) : "Recent"}
-                        </span>
+              {latestNews.length > 0 ? (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {latestNews.map((item) => (
+                    <a
+                      key={`${item.publisher}-${item.title}`}
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-4 hover:bg-zinc-800/40 hover:border-zinc-700/50 transition-all group flex gap-4"
+                    >
+                      {item.image && (
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          loading="lazy"
+                          width={160}
+                          height={160}
+                          sizes="(max-width: 768px) 80px, 160px"
+                          className="w-20 h-20 object-cover rounded-xl flex-shrink-0 bg-zinc-800"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-zinc-200 group-hover:text-blue-400 transition-colors line-clamp-2 mb-1.5">
+                          {item.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-xs text-zinc-600">
+                          <span>{item.publisher}</span>
+                          <span className="text-zinc-700">•</span>
+                          <span>
+                            {item.publishedAt
+                              ? timeAgo(item.publishedAt)
+                              : "Recent"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-500">
+                  Headlines are temporarily unavailable. Search a symbol to open
+                  its live chart and ticker news.
+                </div>
+              )}
             </section>
           </div>
         </section>

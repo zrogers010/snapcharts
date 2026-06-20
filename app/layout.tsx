@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { getGoogleAnalyticsId, getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
-const googleAnalyticsId =
-  process.env.NEXT_PUBLIC_GA_ID || "G-PK7V0S3YCN";
+const siteUrl = getSiteUrl();
+const googleAnalyticsId = getGoogleAnalyticsId();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
