@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
 
 type LegacyStocksPageProps = {
-  params: { symbol: string };
+  params: Promise<{ symbol: string }>;
 };
 
-export default function LegacyStocksPage({ params }: LegacyStocksPageProps) {
-  let symbol = params.symbol;
+export default async function LegacyStocksPage({ params }: LegacyStocksPageProps) {
+  const { symbol: routeSymbol } = await params;
+  let symbol = routeSymbol;
   try {
-    symbol = decodeURIComponent(params.symbol);
+    symbol = decodeURIComponent(routeSymbol);
   } catch {
-    symbol = params.symbol;
+    symbol = routeSymbol;
   }
   symbol = symbol.toUpperCase().trim();
   redirect(`/chart/${encodeURIComponent(symbol)}`);

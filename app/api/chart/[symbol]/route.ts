@@ -67,10 +67,11 @@ function filterToLastTradingDay(quotes: any[]): any[] {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   const range = request.nextUrl.searchParams.get("range") || "1y";
-  const symbol = params.symbol.toUpperCase();
+  const { symbol: routeSymbol } = await params;
+  const symbol = routeSymbol.toUpperCase();
   const config = rangeMap[range] || rangeMap["1y"];
 
   try {

@@ -6,10 +6,11 @@ const FALLBACK_PNG_BASE64 =
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const fallback = Buffer.from(FALLBACK_PNG_BASE64, "base64");
-  const share = getShare(params.id);
+  const { id } = await params;
+  const share = getShare(id);
   if (!share) {
     return NextResponse.json(
       { error: "Snapshot not found" },
@@ -17,7 +18,7 @@ export async function GET(
     );
   }
 
-  const buffer = getShareImageBuffer(params.id);
+  const buffer = getShareImageBuffer(id);
   if (!buffer) {
     return new NextResponse(fallback, {
       headers: {
