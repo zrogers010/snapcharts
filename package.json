@@ -1,5 +1,5 @@
 {
-  "name": "snap-charts",
+  "name": "snapcharts",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "test:unit": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke:routes": "node scripts/smoke-routes.mjs",
+    "smoke:production": "SMOKE_BASE_URL=${SMOKE_BASE_URL:-https://snapcharts.com} node scripts/smoke-routes.mjs",
     "start": "next start"
   },
   "dependencies": {

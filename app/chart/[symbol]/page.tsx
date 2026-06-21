@@ -4,11 +4,12 @@ import SharedChartDisplay from "@/components/SharedChartDisplay";
 import SnapshotActions from "@/components/SnapshotActions";
 import StockView from "@/app/stock/[symbol]/StockView";
 import { getShare } from "@/lib/chartShareStore";
+import { getSiteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
+const siteUrl = getSiteUrl();
 
 type ChartPageProps = {
   params: Promise<{ symbol: string }>;

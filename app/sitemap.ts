@@ -1,9 +1,9 @@
 import { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/site";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://snap-charts.com";
-const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
+const normalizedSiteUrl = getSiteUrl();
 
 const discoverTopics = [
   "ai",
