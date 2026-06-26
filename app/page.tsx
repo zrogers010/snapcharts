@@ -13,7 +13,7 @@ import {
 import { getSiteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 
-export const revalidate = 900;
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "SnapCharts | Real-Time Market Charts, Stock News, and Trading Ideas",
