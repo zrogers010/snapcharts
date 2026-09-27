@@ -96,8 +96,9 @@ async function startServer() {
       const testHtml = await testResp.text();
       const serverHasText = testHtml.includes('Explore markets');
       console.log(`✓ Server responded (${testHtml.length} bytes, contains text: ${serverHasText})`);
-      if (!serverHasText && testHtml.length < 1000) {
-        console.log(`Server response: ${testHtml}`);
+      if (!serverHasText) {
+        const h1Match = testHtml.match(/<h1[^>]*>(.*?)<\/h1>/s);
+        console.log(`  H1 from server: ${h1Match ? h1Match[1].substring(0, 100) : 'NOT FOUND'}`);
       }
     } catch (e) {
       console.log(`✗ Test request failed: ${e.message}`);
