@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import {
+  trackSearchSubmit,
+  trackSearchResultClick,
+} from "@/lib/analytics";
 
 interface SearchResult {
   symbol: string;
@@ -99,11 +103,18 @@ export default function SearchBox({
     };
   }, [query, search]);
 
-  const navigate = (symbol: string) => {
+  const navigate = (symbol: string, isResultClick = false, resultIndex?: number) => {
     setIsOpen(false);
     setQuery("");
     const normalizedSymbol = normalizeSymbolForRoute(symbol);
     if (!normalizedSymbol) return;
+    
+    if (isResultClick && resultIndex !== undefined) {
+      trackSearchResultClick(normalizedSymbol, resultIndex);
+    } else {
+      trackSearchSubmit(query.trim() || symbol);
+    }
+    
     router.push(`/chart/${encodeURIComponent(normalizedSymbol)}`);
   };
 
@@ -117,9 +128,9 @@ export default function SearchBox({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (selectedIndex >= 0 && results[selectedIndex]) {
-        navigate(results[selectedIndex].symbol);
+        navigate(results[selectedIndex].symbol, true, selectedIndex);
       } else if (query.trim()) {
-        navigate(query.trim().toUpperCase());
+        navigate(query.trim().toUpperCase(), false);
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
@@ -225,7 +236,7 @@ export default function SearchBox({
             {results.map((result, index) => (
               <li key={result.symbol} role="option" aria-selected={index === selectedIndex}>
                 <button
-                  onClick={() => navigate(result.symbol)}
+                  onClick={() => navigate(result.symbol, true, index)}
                   className={`w-full px-4 py-3 flex items-center justify-between transition-colors text-left min-h-12 touch-manipulation ${
                     index === selectedIndex
                       ? "bg-zinc-800"
@@ -256,7 +267,7 @@ export default function SearchBox({
           <p className="text-zinc-400">No matching symbols found</p>
           <button
             type="button"
-            onClick={() => navigate(query.trim().toUpperCase())}
+            onClick={() => navigate(query.trim().toUpperCase(), false)}
             className="mt-2 text-left text-xs font-semibold text-blue-300 hover:text-blue-200"
           >
             Open {normalizeSymbolForRoute(query) || query.trim().toUpperCase()}{" "}

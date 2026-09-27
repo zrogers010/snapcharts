@@ -6,6 +6,7 @@ import {
   type MarketQuote,
   type QuoteSeed,
 } from "@/lib/marketData";
+import { TopicLink } from "./TopicLink";
 
 export const metadata: Metadata = {
   title: "Discover | SnapCharts",
@@ -197,17 +198,13 @@ export default async function DiscoverPage({
 
         <div className="mt-6 flex flex-wrap gap-2">
           {discoverTopics.map((topic) => (
-            <Link
+            <TopicLink
               key={topic.slug}
-              href={`/discover?topic=${topic.slug}`}
-              className={`px-3 py-2 rounded-full text-xs border ${
-                activeTopic?.slug === topic.slug
-                  ? "bg-blue-500/20 text-blue-300 border-blue-400/60"
-                  : "bg-zinc-900 border-zinc-700 text-zinc-200"
-              } min-h-8 touch-manipulation transition-colors hover:border-blue-400/60 hover:text-blue-300`}
+              topic={topic.slug}
+              isActive={activeTopic?.slug === topic.slug}
             >
               {topic.label}
-            </Link>
+            </TopicLink>
           ))}
         </div>
 
