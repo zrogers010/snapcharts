@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
 const routes = [
-  { path: "/", text: "Explore markets and share chart ideas in real-time." },
+  { path: "/", text: "Track market pulse with live-delayed charts and news." },
   { path: "/chart/AAPL", text: "AAPL" },
   { path: "/chart/BTC-USD", text: "BTC-USD" },
   { path: "/discover", text: "Discover" },
@@ -73,36 +73,6 @@ async function startServer() {
   const baseUrl = `http://127.0.0.1:${port}`;
   try {
     await waitForServer(baseUrl, child);
-    // Debug: check if .next/server/app/index.html exists
-    const fs = await import("node:fs");
-    const htmlPath = ".next/server/app/index.html";
-    if (fs.existsSync(htmlPath)) {
-      const size = fs.statSync(htmlPath).size;
-      const content = fs.readFileSync(htmlPath, 'utf-8');
-      const hasText = content.includes('Explore markets');
-      console.log(`✓ Found ${htmlPath} (${size} bytes, contains text: ${hasText})`);
-      if (!hasText) {
-        // Show what's actually in the HTML
-        const h1Match = content.match(/<h1[^>]*>(.*?)<\/h1>/s);
-        console.log(`  H1 in file: ${h1Match ? h1Match[1].substring(0, 100) : 'NOT FOUND'}`);
-      }
-    } else {
-      console.log(`✗ Missing ${htmlPath}`);
-    }
-    
-    // Debug: Make a test request immediately after server starts
-    try {
-      const testResp = await fetch(baseUrl);
-      const testHtml = await testResp.text();
-      const serverHasText = testHtml.includes('Explore markets');
-      console.log(`✓ Server responded (${testHtml.length} bytes, contains text: ${serverHasText})`);
-      if (!serverHasText) {
-        const h1Match = testHtml.match(/<h1[^>]*>(.*?)<\/h1>/s);
-        console.log(`  H1 from server: ${h1Match ? h1Match[1].substring(0, 100) : 'NOT FOUND'}`);
-      }
-    } catch (e) {
-      console.log(`✗ Test request failed: ${e.message}`);
-    }
   } catch (error) {
     child.kill("SIGTERM");
     throw new Error(`${error.message}\n${output}`);
