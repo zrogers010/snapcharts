@@ -72,13 +72,13 @@ export async function generateMetadata({
 
   return {
     title: pageTitle,
-    description: `View real-time price, interactive charts, key statistics, and latest news for ${symbol}.`,
+    description: `View live-delayed price, interactive charts, key statistics, and latest news for ${symbol}.`,
     alternates: {
       canonical: `/chart/${encodedSymbol}`,
     },
     openGraph: {
       title: pageTitle,
-      description: `View real-time chart and market data for ${symbol}.`,
+      description: `View live-delayed chart and market data for ${symbol}.`,
       type: "article",
       url: `/chart/${encodedSymbol}`,
       siteName: "SnapCharts",
