@@ -82,7 +82,14 @@ export default function Header({ showSearch = true }: HeaderProps) {
               <SearchBox />
             </div>
           ) : null}
-          <div className={`${showSearch ? "hidden sm:block w-20" : "w-0"}`} />
+          <nav className="flex items-center gap-1">
+            <Link
+              href="/discover"
+              className="px-3 py-1.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-lg transition-colors"
+            >
+              Discover
+            </Link>
+          </nav>
         </div>
       </div>
     </header>
