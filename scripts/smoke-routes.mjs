@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
 const routes = [
-  { path: "/", text: "Explore markets and share chart ideas" },
+  { path: "/", text: "Track market pulse with live-delayed charts and news." },
   { path: "/chart/AAPL", text: "AAPL" },
   { path: "/chart/BTC-USD", text: "BTC-USD" },
   { path: "/discover", text: "Discover" },
@@ -95,6 +95,15 @@ async function run() {
       const response = await fetch(new URL(route.path, baseUrl));
       const text = await response.text();
       assert(response.ok, `${route.path} returned ${response.status}`);
+      if (!text.includes(route.text)) {
+        // Debug: log what we got vs what we expected
+        const snippet = text.length > 500 
+          ? text.slice(0, 500) + '...' 
+          : text;
+        console.error(`Debug: Expected text not found in ${route.path}`);
+        console.error(`Looking for: "${route.text}"`);
+        console.error(`Response snippet: ${snippet}`);
+      }
       assert(text.includes(route.text), `${route.path} missing ${route.text}`);
     }
 
