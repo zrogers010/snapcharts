@@ -81,6 +81,11 @@ async function startServer() {
       const content = fs.readFileSync(htmlPath, 'utf-8');
       const hasText = content.includes('Explore markets');
       console.log(`✓ Found ${htmlPath} (${size} bytes, contains text: ${hasText})`);
+      if (!hasText) {
+        // Show what's actually in the HTML
+        const h1Match = content.match(/<h1[^>]*>(.*?)<\/h1>/s);
+        console.log(`  H1 in file: ${h1Match ? h1Match[1].substring(0, 100) : 'NOT FOUND'}`);
+      }
     } else {
       console.log(`✗ Missing ${htmlPath}`);
     }
