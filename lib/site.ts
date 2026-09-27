@@ -5,5 +5,5 @@ export function getSiteUrl() {
 }
 
 export function getGoogleAnalyticsId() {
-  return process.env.NEXT_PUBLIC_GA_ID?.trim() || "";
+  return process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "";
 }

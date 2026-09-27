@@ -10,6 +10,7 @@ import {
   formatNumber,
   timeAgo,
 } from "@/lib/format";
+import { trackChartView } from "@/lib/analytics";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -123,6 +124,8 @@ export default function StockView({ symbol }: { symbol: string }) {
   useEffect(() => {
     setIsLoading(true);
     setError(null);
+    
+    trackChartView(normalizedSymbol);
 
     Promise.all([
       fetch(`/api/quote/${normalizedSymbol}`).then((r) => r.json()),
