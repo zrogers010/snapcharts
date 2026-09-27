@@ -271,10 +271,22 @@ function ChangePill({ value }: { value: number }) {
 }
 
 export default async function HomePage() {
-  const [latestNews, marketPulseData] = await Promise.all([
-    getLatestMarketNews(),
-    getMarketPulseGroups(),
-  ]);
+  let latestNews: News[] = [];
+  let marketPulseData: Awaited<ReturnType<typeof getMarketPulseGroups>> = {
+    quotedGroups: [],
+    latestUpdatedAt: undefined,
+  };
+
+  try {
+    [latestNews, marketPulseData] = await Promise.all([
+      getLatestMarketNews(),
+      getMarketPulseGroups(),
+    ]);
+  } catch (error) {
+    // Gracefully handle data fetching errors in CI/production
+    console.error('Error fetching homepage data:', error);
+  }
+
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
 
   const newsSchema = {
