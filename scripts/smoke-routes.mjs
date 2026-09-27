@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
 const routes = [
-  { path: "/", text: "Explore markets and share chart ideas" },
+  { path: "/", text: "Explore markets and share chart ideas in real-time." },
   { path: "/chart/AAPL", text: "AAPL" },
   { path: "/chart/BTC-USD", text: "BTC-USD" },
   { path: "/discover", text: "Discover" },
