@@ -16,9 +16,9 @@ import type { Metadata } from "next";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "SnapCharts | Real-Time Market Charts, Stock News, and Trading Ideas",
+  title: "SnapCharts | Market Pulse, Charts, and News",
   description:
-    "Explore real-time market data with SnapCharts: discover trending stocks, crypto, and futures, read market headlines with images, and share chart analysis ideas.",
+    "Track live-delayed market data with SnapCharts: discover trending stocks, crypto, and futures, read market headlines with images, and explore interactive charts.",
   alternates: {
     canonical: "/",
   },
@@ -27,23 +27,33 @@ export const metadata: Metadata = {
     "crypto charts",
     "futures",
     "market news",
-    "trading ideas",
+    "market pulse",
     "SnapCharts",
     "stock market",
     "financial dashboard",
   ],
   openGraph: {
-    title: "SnapCharts | Real-Time Market Charts and News",
+    title: "SnapCharts | Market Pulse, Charts, and News",
     description:
-      "Search symbols, review market movers, and get trading-ready insights in one place.",
+      "Search symbols, review market movers, and explore live-delayed quotes for stocks, crypto, and futures.",
     type: "website",
     siteName: "SnapCharts",
+    url: "/",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SnapCharts - Market Pulse, Charts, and News",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SnapCharts | Real-Time Market Charts and News",
+    title: "SnapCharts | Market Pulse, Charts, and News",
     description:
-      "Explore market pulses, trading ideas, and latest headlines for stocks, crypto, and futures.",
+      "Explore live-delayed quotes, charts, and latest headlines for stocks, crypto, and futures.",
+    images: ["/og-image.png"],
   },
 };
 
@@ -308,11 +318,10 @@ export default async function HomePage() {
               SnapCharts
             </p>
             <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-white">
-              Explore markets and share chart ideas in real-time.
+              Track market pulse with live-delayed charts and news.
             </h1>
             <p className="mt-3 text-zinc-400 max-w-2xl">
-              Find symbols quickly, open a live chart page with stats, and share your
-              chart analysis ideas while you monitor stocks, crypto, and futures.
+              Find symbols quickly, open interactive chart pages with stats, and discover market-moving headlines across stocks, crypto, and futures.
             </p>
             <div className="mt-6 max-w-2xl">
               <SearchBox large />

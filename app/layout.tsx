@@ -8,13 +8,13 @@ const googleAnalyticsId = getGoogleAnalyticsId();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "SnapCharts — Real-Time Stock Charts & Market News",
+  title: "SnapCharts — Market Charts & News",
   description:
-    "SnapCharts is a fast stock and market dashboard for charting, live data, and trading ideas.",
+    "SnapCharts is a fast stock and market dashboard for charting, live-delayed data, and market discovery.",
   keywords: [
     "snapcharts",
     "stock charts",
-    "trading ideas",
+    "market pulse",
     "market news",
     "futures",
     "crypto",
@@ -24,18 +24,27 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "SnapCharts — Real-Time Stock Charts & Market News",
+    title: "SnapCharts — Market Charts & News",
     description:
-      "Share trading analysis and monitor stocks, crypto, and futures with one fast dashboard.",
+      "Monitor stocks, crypto, and futures with live-delayed quotes and one fast dashboard.",
     siteName: "SnapCharts",
     url: "/",
     type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SnapCharts - Market Charts & News",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SnapCharts — Real-Time Stock Charts & Market News",
+    title: "SnapCharts — Market Charts & News",
     description:
-      "Monitor markets, chart ideas, and stay on top of headlines with SnapCharts.",
+      "Monitor markets, explore charts, and stay on top of headlines with SnapCharts.",
+    images: ["/og-image.png"],
   },
   icons: {
     icon: "/favicon.svg",

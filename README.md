@@ -6,7 +6,7 @@ A fast, modern stock market dashboard with interactive charts, key statistics, f
 
 ## Features
 
-- **Real-time quotes** — price, change, volume, market cap, and more
+- **Live-delayed quotes** — price, change, volume, market cap, and more
 - **Interactive charts** — area and candlestick views with 1D / 5D / 1M / 3M / 6M / 1Y / 5Y ranges (via [TradingView Lightweight Charts](https://github.com/nickvdyck/lightweight-charts))
 - **Financial metrics** — revenue, margins, cash flow, analyst targets
 - **Company profiles** — sector, industry, HQ, CEO, business summary
