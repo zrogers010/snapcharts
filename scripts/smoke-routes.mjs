@@ -78,9 +78,24 @@ async function startServer() {
     const htmlPath = ".next/server/app/index.html";
     if (fs.existsSync(htmlPath)) {
       const size = fs.statSync(htmlPath).size;
-      console.log(`✓ Found ${htmlPath} (${size} bytes)`);
+      const content = fs.readFileSync(htmlPath, 'utf-8');
+      const hasText = content.includes('Explore markets');
+      console.log(`✓ Found ${htmlPath} (${size} bytes, contains text: ${hasText})`);
     } else {
       console.log(`✗ Missing ${htmlPath}`);
+    }
+    
+    // Debug: Make a test request immediately after server starts
+    try {
+      const testResp = await fetch(baseUrl);
+      const testHtml = await testResp.text();
+      const serverHasText = testHtml.includes('Explore markets');
+      console.log(`✓ Server responded (${testHtml.length} bytes, contains text: ${serverHasText})`);
+      if (!serverHasText && testHtml.length < 1000) {
+        console.log(`Server response: ${testHtml}`);
+      }
+    } catch (e) {
+      console.log(`✗ Test request failed: ${e.message}`);
     }
   } catch (error) {
     child.kill("SIGTERM");
