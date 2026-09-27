@@ -73,6 +73,15 @@ async function startServer() {
   const baseUrl = `http://127.0.0.1:${port}`;
   try {
     await waitForServer(baseUrl, child);
+    // Debug: check if .next/server/app/index.html exists
+    const fs = await import("node:fs");
+    const htmlPath = ".next/server/app/index.html";
+    if (fs.existsSync(htmlPath)) {
+      const size = fs.statSync(htmlPath).size;
+      console.log(`✓ Found ${htmlPath} (${size} bytes)`);
+    } else {
+      console.log(`✗ Missing ${htmlPath}`);
+    }
   } catch (error) {
     child.kill("SIGTERM");
     throw new Error(`${error.message}\n${output}`);
