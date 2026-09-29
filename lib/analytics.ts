@@ -32,3 +32,15 @@ export function trackChartView(symbol: string) {
 export function trackDiscoverTopicSelect(topic: string) {
   trackEvent("discover_topic_select", { topic });
 }
+
+export function trackSnapCreated(symbol: string, range: string) {
+  trackEvent("snap_created", { symbol, range });
+}
+
+export function trackSnapShareClick(method: "copy" | "share" | "download") {
+  trackEvent("snap_share_click", { method });
+}
+
+export function trackSnapToChart(symbol: string) {
+  trackEvent("snap_to_chart", { symbol });
+}

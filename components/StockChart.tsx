@@ -19,6 +19,7 @@ import type {
   TradingViewWidget,
   TradingViewWindow,
 } from "@/components/stock-chart/types";
+import { trackSnapShareClick } from "@/lib/analytics";
 
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
@@ -237,6 +238,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
       return;
     }
     triggerDownload(data);
+    trackSnapShareClick("download");
     setDownloadDone(true);
     showActionMessage("✓ PNG download started");
     window.setTimeout(() => setDownloadDone(false), 1500);
@@ -304,6 +306,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
       const shareUrl = buildShareUrl(payload.id);
       const copied = await copyShareUrl(shareUrl);
       if (copied) {
+        trackSnapShareClick("copy");
         setCopyLinkDone(true);
         showActionMessage("✓ Chart link copied");
         window.setTimeout(() => setCopyLinkDone(false), 1500);
