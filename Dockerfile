@@ -26,6 +26,12 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy public assets if needed for standalone mode
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Create share directory with proper ownership
+RUN mkdir -p /app/data/shares && chown -R nextjs:nodejs /app/data
+
 USER nextjs
 
 EXPOSE 3000

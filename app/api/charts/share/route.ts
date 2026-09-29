@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MAX_SHARE_IMAGE_BYTES, saveShare } from "@/lib/chartShareStore";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { getSiteUrl } from "@/lib/site";
 
 const MAX_JSON_BODY_BYTES = Math.ceil(MAX_SHARE_IMAGE_BYTES * 1.4);
 const MAX_IMAGE_DATA_CHARS = Math.ceil(MAX_SHARE_IMAGE_BYTES * 1.4);
@@ -52,10 +53,13 @@ export async function POST(request: NextRequest) {
     }
 
     const id = saveShare({ symbol, range, imageData });
+    const siteUrl = getSiteUrl();
 
     return NextResponse.json({
       id,
-      url: `${request.nextUrl.origin}/chart/${id}`,
+      url: `${siteUrl}/chart/${id}`,
+      image_url: `${siteUrl}/api/charts/share/${id}/image`,
+      noindex: true,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("too large")) {

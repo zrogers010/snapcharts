@@ -14,7 +14,18 @@ export interface SharedChartRecord {
 const SHARE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 500;
 export const MAX_SHARE_IMAGE_BYTES = 2_500_000;
-const STORE_DIR = path.join(process.cwd(), ".snapcharts-shares");
+
+const getStoreDir = () => {
+  const envDir = process.env.SNAP_SHARE_DIR?.trim();
+  if (envDir) {
+    return path.isAbsolute(envDir) 
+      ? envDir 
+      : path.join(process.cwd(), envDir);
+  }
+  return path.join(process.cwd(), ".snapcharts-shares");
+};
+
+const STORE_DIR = getStoreDir();
 const FILE_EXT = ".json";
 
 const base64Like = (value: string) => /^[A-Za-z0-9+/=\s]+$/.test(value);
@@ -46,8 +57,9 @@ const normalizeDataUri = (value: string): string => {
 const ensureStoreDir = () => {
   try {
     fs.mkdirSync(STORE_DIR, { recursive: true });
-  } catch {
-    // ignore
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create share directory ${STORE_DIR}: ${message}`);
   }
 };
 

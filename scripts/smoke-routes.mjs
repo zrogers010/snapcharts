@@ -119,6 +119,11 @@ async function run() {
     const share = await shareResponse.json();
     assert(shareResponse.ok, `share POST returned ${shareResponse.status}`);
     assert(typeof share.id === "string", "share POST did not return an id");
+    assert(typeof share.url === "string", "share POST did not return a url");
+    assert(typeof share.image_url === "string", "share POST did not return an image_url");
+    assert(share.noindex === true, "share POST did not return noindex: true");
+    assert(share.image_url.includes(`/api/charts/share/${share.id}/image`), 
+      "share image_url does not match expected pattern");
 
     const imageResponse = await fetch(
       new URL(`/api/charts/share/${share.id}/image`, baseUrl)
@@ -127,6 +132,20 @@ async function run() {
     assert(
       imageResponse.headers.get("content-type")?.includes("image/png"),
       "share image did not return PNG content"
+    );
+
+    const sharePageResponse = await fetch(new URL(`/chart/${share.id}`, baseUrl));
+    assert(sharePageResponse.ok, `share page returned ${sharePageResponse.status}`);
+    const sharePageHtml = await sharePageResponse.text();
+    const robotsMatch = sharePageHtml.match(/<meta\s+name="robots"\s+content="([^"]+)"/i);
+    assert(robotsMatch, "share page missing robots meta tag");
+    assert(
+      robotsMatch[1].includes('noindex') && robotsMatch[1].includes('nofollow'),
+      `share page robots meta should be noindex,nofollow but got: ${robotsMatch[1]}`
+    );
+    assert(
+      sharePageHtml.includes('property="og:image"'),
+      "share page missing og:image meta tag"
     );
     console.log(`Route smoke checks passed against ${baseUrl}`);
   } finally {

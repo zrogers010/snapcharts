@@ -42,6 +42,10 @@ export async function generateMetadata({
     return {
       title: `${share.symbol} - ${share.range.toUpperCase()} Snapshot | SnapCharts`,
       description: `Shareable chart snapshot for ${share.symbol} (${share.range.toUpperCase()}).`,
+      robots: {
+        index: false,
+        follow: false,
+      },
       openGraph: {
         title: `${share.symbol} Snapshot`,
         description: `Shareable chart snapshot for ${share.symbol}.`,
