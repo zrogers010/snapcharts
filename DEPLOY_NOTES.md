@@ -239,3 +239,104 @@ Per requirements, these remain future work:
 https://github.com/zrogers010/snapcharts/pull/9
 
 **Status**: ✅ CI passing
+
+---
+
+# SNAP-BE-05: Chart SSR Gap-Fill + GA Build Fix
+
+## Overview
+This PR addresses two production gaps:
+1. **Chart SSR**: Symbol chart pages (`/chart/{symbol}`) now server-render meaningful quote/header data on first paint, unblocking FE-03
+2. **GA Build Baking**: Google Analytics measurement ID is now baked into Docker builds, fixing missing GA tags in ISR-cached homepage HTML
+
+## Issues Fixed
+
+### Ticket A: SNAP-BE-05 - Chart SSR Gap-Fill
+**Problem**: `/chart/{symbol}` pages rendered via client-only `StockView.tsx`. First paint showed only an SSR skeleton; quote, summary, and news loaded only in `useEffect` via API calls.
+
+**Solution**: Server component architecture with RSC data fetching in `/app/chart/[symbol]/page.tsx`.
+- Fetches quote and news data server-side using existing `/api/quote` and `/api/news` endpoints
+- Renders semantic HTML (h1, price, stats, news) via new `ChartPageContent` server component
+- Client-only `StockChart` component mounts in designated slot for TradingView embed
+- Interactive expandable panels (`ExpandablePanelClient`) use client state while preserving SSR content
+- Share pages continue to work unchanged (noindex, absolute og:image, branded snapshot display)
+
+**Approach**: Option (a) - Server component fetches and renders quote/stats/news as semantic HTML, with client chart component mounted in slot. This ensures crawlers and no-JS clients receive meaningful content.
+
+### Ticket B: Homepage GA Bake
+**Problem**: Chart/share HTML included GA tag `G-PK7V0S3YCN`, but homepage HTML often did not. Root cause: `NEXT_PUBLIC_*` variables are inlined at build time, but `NEXT_PUBLIC_GA_MEASUREMENT_ID` was only passed at `docker run` time. Homepage uses ISR (`revalidate = 60`), so pages baked without the GA ID omitted gtag scripts.
+
+**Solution**: Bake `NEXT_PUBLIC_GA_MEASUREMENT_ID` (and `NEXT_PUBLIC_SITE_URL`) into Docker build.
+- **Dockerfile**: Added `ARG` and `ENV` for `NEXT_PUBLIC_GA_MEASUREMENT_ID` and `NEXT_PUBLIC_SITE_URL` in builder stage
+- **deploy.sh**: Reads values from `.env.production` and passes them via `--build-arg` to `docker build`
+- GA ID not hardcoded; read from env file at deploy time
+- Build gracefully handles missing GA env (scripts omitted, no crash)
+
+## Changes Implemented
+
+### Code Changes
+1. **Server-side data fetching** (`app/chart/[symbol]/page.tsx`)
+   - Added SSR fetch for quote and news data using `Promise.allSettled`
+   - Renders semantic HTML via `ChartPageContent` server component
+   - Handles fetch failures gracefully with error state
+   - Includes `ChartViewTracker` client component for analytics
+
+2. **New server component** (`app/chart/[symbol]/ChartPageContent.tsx`)
+   - Server-rendered semantic HTML: h1, price, change badges, stats tables, financials, news
+   - Reuses existing format utilities and type definitions
+   - Mounts client-only `StockChart` component for TradingView embed
+   - Crypto/futures asset type badges rendered server-side
+
+3. **Client-side interactive components**
+   - `app/chart/[symbol]/ExpandablePanelClient.tsx` - Expandable panels with client state
+   - `app/chart/[symbol]/ChartViewTracker.tsx` - Analytics tracking client component
+
+4. **Docker build-time env baking** (`Dockerfile`)
+   - Added `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` and `ARG NEXT_PUBLIC_SITE_URL`
+   - Sets corresponding `ENV` variables during build
+   - Ensures NEXT_PUBLIC_* values are inlined into Next.js build
+
+4. **Deploy script enhancement** (`scripts/deploy.sh`)
+   - Reads `NEXT_PUBLIC_GA_MEASUREMENT_ID` and `NEXT_PUBLIC_SITE_URL` from `.env.production`
+   - Passes values via `--build-arg` to `docker build`
+   - Maintains runtime `-e` flags for non-inlined environment variables
+
+## Deployment Requirements
+
+**CRITICAL**: After deploy, `.env.production` must contain:
+```
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-PK7V0S3YCN
+NEXT_PUBLIC_SITE_URL=https://snapcharts.com
+```
+
+These values are read at build time and baked into the Next.js bundle.
+
+## Verification Steps
+
+### Chart SSR (after deploy)
+```bash
+# Verify symbol page contains semantic quote data in initial HTML (before JS loads)
+curl -s https://snapcharts.com/chart/AAPL | grep -i 'AAPL'
+curl -s https://snapcharts.com/chart/AAPL | grep -i 'apple'
+curl -s https://snapcharts.com/chart/AAPL | grep 'text-4xl'  # Price element
+curl -s https://snapcharts.com/chart/AAPL | grep 'Previous Close'  # Stats row
+
+# Verify share pages still work (noindex, og:image)
+curl -s https://snapcharts.com/chart/{share-id} | grep 'noindex'
+curl -s https://snapcharts.com/chart/{share-id} | grep 'og:image'
+```
+
+### GA Baking (after deploy + one ISR revalidate cycle)
+```bash
+# Verify homepage HTML contains GA measurement ID
+curl -s https://snapcharts.com/ | grep -o 'G-PK7V0S3YCN'
+
+# Verify gtag script is present
+curl -s https://snapcharts.com/ | grep 'googletagmanager.com/gtag/js'
+```
+
+## Impact
+- **FE-03 unblocked**: Frontend can now rely on SSR content for symbol chart pages
+- **GA tracking restored**: Homepage and all ISR pages now include analytics scripts in initial HTML
+- **SEO improved**: Crawlers receive meaningful content on first paint for chart pages
+- **No breaking changes**: Share pages, chart client behavior, and Snap CTA remain unchanged

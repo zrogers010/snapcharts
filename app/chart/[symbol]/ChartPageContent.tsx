@@ -1,0 +1,609 @@
+import { type ReactNode } from "react";
+import Header from "@/components/Header";
+import StockChart from "@/components/StockChart";
+import {
+  formatCurrency,
+  formatLargeNumber,
+  formatPercent,
+  formatNumber,
+  timeAgo,
+} from "@/lib/format";
+import { ExpandablePanelClient } from "./ExpandablePanelClient";
+
+interface QuoteData {
+  symbol: string;
+  shortName?: string;
+  longName?: string;
+  quoteType?: string;
+  regularMarketPrice?: number;
+  regularMarketChange?: number;
+  regularMarketChangePercent?: number;
+  regularMarketPreviousClose?: number;
+  regularMarketOpen?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+  regularMarketTime?: number;
+  averageDailyVolume3Month?: number;
+  marketCap?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  exchange?: string;
+  fullExchangeName?: string;
+  circulatingSupply?: number;
+  volume24Hr?: number;
+  volumeAllCurrencies?: number;
+}
+
+interface SummaryData {
+  assetProfile?: {
+    sector?: string;
+    industry?: string;
+    fullTimeEmployees?: number;
+    longBusinessSummary?: string;
+    website?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    companyOfficers?: Array<{ name: string; title: string }>;
+  };
+  summaryDetail?: {
+    trailingPE?: number;
+    forwardPE?: number;
+    dividendYield?: number;
+    dividendRate?: number;
+    beta?: number;
+    fiftyDayAverage?: number;
+    twoHundredDayAverage?: number;
+    trailingAnnualDividendYield?: number;
+    payoutRatio?: number;
+    exDividendDate?: string;
+  };
+  financialData?: {
+    totalRevenue?: number;
+    revenueGrowth?: number;
+    grossMargins?: number;
+    operatingMargins?: number;
+    profitMargins?: number;
+    returnOnEquity?: number;
+    targetMeanPrice?: number;
+    recommendationMean?: number;
+    recommendationKey?: string;
+    numberOfAnalystOpinions?: number;
+    earningsGrowth?: number;
+    currentPrice?: number;
+    totalCash?: number;
+    totalDebt?: number;
+    freeCashflow?: number;
+  };
+  defaultKeyStatistics?: {
+    trailingEps?: number;
+    forwardEps?: number;
+    pegRatio?: number;
+    priceToBook?: number;
+    enterpriseValue?: number;
+    sharesOutstanding?: number;
+    floatShares?: number;
+    shortRatio?: number;
+    shortPercentOfFloat?: number;
+    earningsQuarterlyGrowth?: number;
+  };
+}
+
+interface NewsArticle {
+  title: string;
+  link: string;
+  publisher: string;
+  publishedAt: string | null;
+  thumbnail: string | null;
+}
+
+interface ChartPageContentProps {
+  symbol: string;
+  quote: QuoteData;
+  summary: SummaryData | null;
+  news: NewsArticle[];
+}
+
+export default function ChartPageContent({
+  symbol,
+  quote,
+  summary,
+  news,
+}: ChartPageContentProps) {
+  const isPositive = (quote.regularMarketChange || 0) >= 0;
+  const changeColor = isPositive ? "text-emerald-400" : "text-red-400";
+  const changeBg = isPositive ? "bg-emerald-400/10" : "bg-red-400/10";
+  const profile = summary?.assetProfile;
+  const detail = summary?.summaryDetail;
+  const financial = summary?.financialData;
+  const keyStats = summary?.defaultKeyStatistics;
+
+  const quoteType = quote.quoteType || "EQUITY";
+  const isCrypto = quoteType === "CRYPTOCURRENCY";
+  const isFuture = quoteType === "FUTURE" || quoteType === "COMMODITY";
+  const isEquityLike = !isCrypto && !isFuture;
+
+  return (
+    <div className="min-h-screen">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* ── Quote Header ─────────────────────────────────────── */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              {symbol}
+            </h1>
+            <span className="text-zinc-400 text-base">
+              {quote.shortName || quote.longName}
+            </span>
+            {(isCrypto || isFuture) && <AssetTypeBadge type={quoteType} />}
+            {quote.fullExchangeName && (
+              <span className="text-[10px] text-zinc-500 bg-zinc-800/80 px-2 py-0.5 rounded-full font-medium uppercase tracking-wide">
+                {quote.fullExchangeName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="text-4xl font-bold text-white tracking-tight">
+              {formatCurrency(quote.regularMarketPrice)}
+            </span>
+            <span
+              className={`text-base font-semibold ${changeColor} ${changeBg} px-2.5 py-1 rounded-lg`}
+            >
+              {isPositive ? "+" : ""}
+              {quote.regularMarketChange?.toFixed(2)} (
+              {isPositive ? "+" : ""}
+              {quote.regularMarketChangePercent?.toFixed(2)}%)
+            </span>
+          </div>
+        </div>
+
+        <QuoteContextStrip quote={quote} isCrypto={isCrypto} isFuture={isFuture} />
+
+        {/* ── Chart ────────────────────────────────────────────── */}
+        <div className="mb-8">
+          <StockChart key={symbol} symbol={symbol} />
+        </div>
+
+        {/* ── About, Stats + Financials ───────────────────────── */}
+        <div className="space-y-4 mb-8">
+          <ExpandablePanelClient title={`About ${quote.shortName || symbol}`}>
+            {profile ? (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 mb-5">
+                  {profile.sector && (
+                    <InfoItem label="Sector" value={profile.sector} />
+                  )}
+                  {profile.industry && (
+                    <InfoItem label="Industry" value={profile.industry} />
+                  )}
+                  {profile.fullTimeEmployees != null && (
+                    <InfoItem
+                      label="Employees"
+                      value={formatNumber(profile.fullTimeEmployees)}
+                    />
+                  )}
+                  {profile.city && (
+                    <InfoItem
+                      label="Headquarters"
+                      value={[profile.city, profile.state, profile.country]
+                        .filter(Boolean)
+                        .join(", ")}
+                    />
+                  )}
+                  {profile.website && (
+                    <div>
+                      <div className="text-[11px] text-zinc-500 mb-0.5">
+                        Website
+                      </div>
+                      <a
+                        href={profile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        {profile.website.replace(/^https?:\/\/(www\.)?/, "")}
+                      </a>
+                    </div>
+                  )}
+                  {profile.companyOfficers?.[0] && (
+                    <InfoItem
+                      label="CEO"
+                      value={profile.companyOfficers[0].name}
+                    />
+                  )}
+                </div>
+                {profile.longBusinessSummary && (
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {profile.longBusinessSummary}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">No company profile data.</p>
+            )}
+          </ExpandablePanelClient>
+
+          <ExpandablePanelClient title="Key Statistics">
+            <div className="space-y-0">
+              <StatRow
+                label="Previous Close"
+                value={formatCurrency(quote.regularMarketPreviousClose)}
+              />
+              <StatRow
+                label="Open"
+                value={formatCurrency(quote.regularMarketOpen)}
+              />
+              <StatRow
+                label="Day Range"
+                value={`${formatCurrency(quote.regularMarketDayLow)} — ${formatCurrency(quote.regularMarketDayHigh)}`}
+              />
+              <StatRow
+                label="52 Wk Range"
+                value={`${formatCurrency(quote.fiftyTwoWeekLow)} — ${formatCurrency(quote.fiftyTwoWeekHigh)}`}
+              />
+              <StatRow
+                label="Volume"
+                value={formatNumber(quote.regularMarketVolume)}
+              />
+              <StatRow
+                label="Avg Volume"
+                value={formatNumber(quote.averageDailyVolume3Month)}
+              />
+              {quote.marketCap != null && (
+                <StatRow
+                  label="Market Cap"
+                  value={formatLargeNumber(quote.marketCap)}
+                />
+              )}
+              {isCrypto && quote.circulatingSupply != null && (
+                <StatRow
+                  label="Circulating Supply"
+                  value={formatLargeNumber(quote.circulatingSupply)}
+                />
+              )}
+              {isCrypto &&
+                (quote.volume24Hr != null || quote.volumeAllCurrencies != null) && (
+                  <StatRow
+                    label="24h Volume"
+                    value={formatLargeNumber(
+                      quote.volume24Hr ?? quote.volumeAllCurrencies
+                    )}
+                  />
+                )}
+              {isEquityLike && (
+                <>
+                  <StatRow
+                    label="P/E (TTM)"
+                    value={detail?.trailingPE?.toFixed(2)}
+                  />
+                  <StatRow
+                    label="P/E (Fwd)"
+                    value={detail?.forwardPE?.toFixed(2)}
+                  />
+                  <StatRow
+                    label="EPS (TTM)"
+                    value={
+                      keyStats?.trailingEps != null
+                        ? `$${keyStats.trailingEps.toFixed(2)}`
+                        : undefined
+                    }
+                  />
+                  <StatRow
+                    label="Dividend Yield"
+                    value={
+                      detail?.dividendYield != null
+                        ? formatPercent(detail.dividendYield)
+                        : undefined
+                    }
+                  />
+                </>
+              )}
+              <StatRow label="Beta" value={detail?.beta?.toFixed(2)} />
+              <StatRow
+                label="50 Day Avg"
+                value={formatCurrency(detail?.fiftyDayAverage)}
+              />
+              <StatRow
+                label="200 Day Avg"
+                value={formatCurrency(detail?.twoHundredDayAverage)}
+              />
+              {isEquityLike && (
+                <>
+                  <StatRow
+                    label="Shares Out"
+                    value={
+                      keyStats?.sharesOutstanding != null
+                        ? formatLargeNumber(keyStats.sharesOutstanding)
+                        : undefined
+                    }
+                  />
+                  <StatRow
+                    label="PEG Ratio"
+                    value={keyStats?.pegRatio?.toFixed(2)}
+                  />
+                  <StatRow
+                    label="Price/Book"
+                    value={keyStats?.priceToBook?.toFixed(2)}
+                  />
+                </>
+              )}
+            </div>
+          </ExpandablePanelClient>
+
+          <ExpandablePanelClient title="Financial Metrics">
+            {financial ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {financial.totalRevenue != null && (
+                  <MetricCard
+                    label="Revenue"
+                    value={formatLargeNumber(financial.totalRevenue)}
+                  />
+                )}
+                {financial.revenueGrowth != null && (
+                  <MetricCard
+                    label="Revenue Growth"
+                    value={formatPercent(financial.revenueGrowth)}
+                  />
+                )}
+                {financial.grossMargins != null && (
+                  <MetricCard
+                    label="Gross Margin"
+                    value={formatPercent(financial.grossMargins)}
+                  />
+                )}
+                {financial.operatingMargins != null && (
+                  <MetricCard
+                    label="Operating Margin"
+                    value={formatPercent(financial.operatingMargins)}
+                  />
+                )}
+                {financial.profitMargins != null && (
+                  <MetricCard
+                    label="Profit Margin"
+                    value={formatPercent(financial.profitMargins)}
+                  />
+                )}
+                {financial.returnOnEquity != null && (
+                  <MetricCard
+                    label="Return on Equity"
+                    value={formatPercent(financial.returnOnEquity)}
+                  />
+                )}
+                {financial.totalCash != null && (
+                  <MetricCard
+                    label="Total Cash"
+                    value={formatLargeNumber(financial.totalCash)}
+                  />
+                )}
+                {financial.totalDebt != null && (
+                  <MetricCard
+                    label="Total Debt"
+                    value={formatLargeNumber(financial.totalDebt)}
+                  />
+                )}
+                {financial.freeCashflow != null && (
+                  <MetricCard
+                    label="Free Cash Flow"
+                    value={formatLargeNumber(financial.freeCashflow)}
+                  />
+                )}
+                {financial.targetMeanPrice != null && (
+                  <MetricCard
+                    label="Analyst Target"
+                    value={formatCurrency(financial.targetMeanPrice)}
+                  />
+                )}
+                {financial.recommendationKey && (
+                  <MetricCard
+                    label="Recommendation"
+                    value={financial.recommendationKey.toUpperCase()}
+                    accent
+                  />
+                )}
+                {financial.numberOfAnalystOpinions != null && (
+                  <MetricCard
+                    label="Analyst Opinions"
+                    value={financial.numberOfAnalystOpinions.toString()}
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">
+                No financial metrics available.
+              </p>
+            )}
+          </ExpandablePanelClient>
+        </div>
+
+        {/* ── News ─────────────────────────────────────────────── */}
+        {news.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">
+              Latest News
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {news.map((article, i) => (
+                <a
+                  key={i}
+                  href={article.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-zinc-900/40 border border-zinc-800/40 rounded-2xl p-4 hover:bg-zinc-800/40 hover:border-zinc-700/50 transition-all group flex gap-4"
+                >
+                  {article.thumbnail && (
+                    <img
+                      src={article.thumbnail}
+                      alt=""
+                      className="w-20 h-20 object-cover rounded-xl flex-shrink-0 bg-zinc-800"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-zinc-200 group-hover:text-blue-400 transition-colors line-clamp-2 mb-1.5">
+                      {article.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-zinc-600">
+                      {article.publisher && <span>{article.publisher}</span>}
+                      {article.publishedAt && (
+                        <>
+                          <span className="text-zinc-700">·</span>
+                          <span>{timeAgo(article.publishedAt)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | number | null;
+}) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-zinc-800/30 last:border-0">
+      <span className="text-[13px] text-zinc-500">{label}</span>
+      <span className="text-[13px] text-white font-medium tabular-nums">
+        {value ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="bg-zinc-800/25 rounded-xl px-4 py-3">
+      <div className="text-[11px] text-zinc-500 mb-1">{label}</div>
+      <div
+        className={`text-sm font-semibold ${accent ? "text-blue-400" : "text-white"}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] text-zinc-500 mb-0.5">{label}</div>
+      <div className="text-sm text-white font-medium">{value}</div>
+    </div>
+  );
+}
+
+function QuoteContextStrip({
+  quote,
+  isCrypto,
+  isFuture,
+}: {
+  quote: QuoteData;
+  isCrypto: boolean;
+  isFuture: boolean;
+}) {
+  const timestamp = quote.regularMarketTime
+    ? timeAgo(quote.regularMarketTime)
+    : null;
+  const volumeValue =
+    isCrypto && (quote.volume24Hr != null || quote.volumeAllCurrencies != null)
+      ? formatLargeNumber(quote.volume24Hr ?? quote.volumeAllCurrencies)
+      : formatNumber(quote.regularMarketVolume);
+
+  const items = [
+    {
+      label: "Day Range",
+      value: `${formatCurrency(quote.regularMarketDayLow)} - ${formatCurrency(quote.regularMarketDayHigh)}`,
+    },
+    {
+      label: isFuture ? "Contract Volume" : isCrypto ? "24h Volume" : "Volume",
+      value: volumeValue,
+    },
+    {
+      label: "52 Week",
+      value: `${formatCurrency(quote.fiftyTwoWeekLow)} - ${formatCurrency(quote.fiftyTwoWeekHigh)}`,
+    },
+    {
+      label: "Market Cap",
+      value:
+        quote.marketCap != null
+          ? formatLargeNumber(quote.marketCap)
+          : isCrypto && quote.circulatingSupply != null
+          ? formatLargeNumber(quote.circulatingSupply)
+          : "—",
+    },
+    {
+      label: "Previous Close",
+      value: formatCurrency(quote.regularMarketPreviousClose),
+    },
+  ];
+
+  return (
+    <section className="mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-zinc-800/60 bg-zinc-900/45 px-3 py-3 min-h-20"
+          >
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+              {item.label}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-zinc-100 tabular-nums break-words">
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      {timestamp && (
+        <p className="mt-2 text-[11px] text-zinc-600">
+          Quote delayed. Updated {timestamp}.
+        </p>
+      )}
+    </section>
+  );
+}
+
+const assetTypeBadgeConfig: Record<string, { label: string; color: string }> = {
+  CRYPTOCURRENCY: {
+    label: "Crypto",
+    color: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+  },
+  FUTURE: {
+    label: "Futures",
+    color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+  },
+  COMMODITY: {
+    label: "Commodity",
+    color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+  },
+};
+
+function AssetTypeBadge({ type }: { type: string }) {
+  const cfg = assetTypeBadgeConfig[type];
+  if (!cfg) return null;
+  return (
+    <span
+      className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${cfg.color}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}

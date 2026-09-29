@@ -110,9 +110,21 @@ build_and_deploy() {
     publish_target="${HOST_BIND_ADDRESS}:${publish_target}"
   fi
 
+  local env_file="${APP_DIR}/.env.production"
+  local ga_id=""
+  local site_url=""
+  if [ -f "$env_file" ]; then
+    ga_id="$(grep -E '^NEXT_PUBLIC_GA_MEASUREMENT_ID=' "$env_file" | cut -d= -f2- || echo '')"
+    site_url="$(grep -E '^NEXT_PUBLIC_SITE_URL=' "$env_file" | cut -d= -f2- || echo '')"
+  fi
+
   log "Deploying ${repo_url} branch ${branch_name} at commit ${commit}"
   log "Building Docker image ${image_tag}..."
-  docker build -t "$image_tag" "$APP_DIR"
+  docker build \
+    ${ga_id:+--build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID="${ga_id}"} \
+    ${site_url:+--build-arg NEXT_PUBLIC_SITE_URL="${site_url}"} \
+    -t "$image_tag" \
+    "$APP_DIR"
   docker tag "$image_tag" "${IMAGE_NAME}:latest"
 
   if docker ps -a --filter "name=${CONTAINER_NAME}" --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -125,12 +137,6 @@ build_and_deploy() {
   mkdir -p "$share_dir"
   sudo chown -R 1001:1001 "$share_dir" || chown -R 1001:1001 "$share_dir" || true
 
-  local env_file="${APP_DIR}/.env.production"
-  local ga_id=""
-  if [ -f "$env_file" ]; then
-    ga_id="$(grep -E '^NEXT_PUBLIC_GA_MEASUREMENT_ID=' "$env_file" | cut -d= -f2- || echo '')"
-  fi
-
   log "Starting container ${CONTAINER_NAME} on port ${publish_target}..."
   docker run -d \
     --name "$CONTAINER_NAME" \
@@ -141,6 +147,7 @@ build_and_deploy() {
     -e PORT="${CONTAINER_PORT}" \
     -e SNAP_SHARE_DIR=/app/data/shares \
     ${ga_id:+-e NEXT_PUBLIC_GA_MEASUREMENT_ID="${ga_id}"} \
+    ${site_url:+-e NEXT_PUBLIC_SITE_URL="${site_url}"} \
     "$image_tag"
 
   docker image prune -f >/dev/null 2>&1 || true
