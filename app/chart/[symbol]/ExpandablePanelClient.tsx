@@ -17,6 +17,7 @@ export function ExpandablePanelClient({
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="w-full px-5 py-3 flex items-center justify-between text-left"
+        aria-expanded={open}
       >
         <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
           {title}
@@ -27,7 +28,13 @@ export function ExpandablePanelClient({
           ▾
         </span>
       </button>
-      {open && <div className="px-5 pb-5 pt-1">{children}</div>}
+      <div 
+        className="px-5 pb-5 pt-1" 
+        hidden={!open}
+        aria-hidden={!open}
+      >
+        {children}
+      </div>
     </section>
   );
 }
