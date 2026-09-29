@@ -285,31 +285,31 @@ export default function StockChart({ symbol }: { symbol: string }) {
     try {
       let imageData: string | undefined;
 
-      try {
-        const [quoteResponse, chartResponse] = await Promise.all([
-          fetch(`/api/quote/${tickerSymbol}`),
-          fetch(`/api/chart/${tickerSymbol}?range=${activeRange}`),
-        ]);
-
-        if (quoteResponse.ok && chartResponse.ok) {
-          const quotePayload = await quoteResponse.json();
-          const chartPayload = await chartResponse.json();
-          
-          if (quotePayload?.quote && chartPayload?.data) {
-            imageData = await createBrandedCard({
-              symbol: tickerSymbol,
-              range: activeRange,
-              quoteData: quotePayload.quote,
-              chartData: chartPayload.data,
-            });
-          }
-        }
-      } catch (error) {
-        console.warn("Branded card creation failed, falling back to chart capture:", error);
-      }
+      imageData = await captureChartImage();
 
       if (!imageData) {
-        imageData = await captureChartImage();
+        try {
+          const [quoteResponse, chartResponse] = await Promise.all([
+            fetch(`/api/quote/${tickerSymbol}`),
+            fetch(`/api/chart/${tickerSymbol}?range=${activeRange}`),
+          ]);
+
+          if (quoteResponse.ok && chartResponse.ok) {
+            const quotePayload = await quoteResponse.json();
+            const chartPayload = await chartResponse.json();
+            
+            if (quotePayload?.quote && chartPayload?.data) {
+              imageData = await createBrandedCard({
+                symbol: tickerSymbol,
+                range: activeRange,
+                quoteData: quotePayload.quote,
+                chartData: chartPayload.data,
+              });
+            }
+          }
+        } catch (error) {
+          console.warn("Branded card fallback failed:", error);
+        }
       }
 
       if (!imageData) {
