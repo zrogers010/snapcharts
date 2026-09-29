@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   buildTimeframe,
   cleanSymbol,
+  getSymbolKind,
   toTradingViewSymbol,
   rangeToResolution,
   timeRanges,
@@ -12,6 +14,7 @@ import { createDatafeed } from "@/components/stock-chart/datafeed";
 import {
   buildShareUrl,
   captureChartImage as captureChartImageFromWidget,
+  captureLightweightChartImage,
   triggerDownload as triggerDownloadFile,
 } from "@/components/stock-chart/screenshot";
 import { loadTradingViewScript } from "@/components/stock-chart/tradingview";
@@ -26,9 +29,16 @@ import {
 } from "@/lib/analytics";
 import { createBrandedCard } from "@/components/stock-chart/branded-card";
 
+const LightweightChart = dynamic(
+  () => import("@/components/stock-chart/LightweightChart"),
+  { ssr: false }
+);
+
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
+  const symbolKind = useMemo(() => getSymbolKind(tickerSymbol), [tickerSymbol]);
   const tvSymbol = useMemo(() => toTradingViewSymbol(tickerSymbol), [tickerSymbol]);
+  const useLightweight = symbolKind === "future";
   const [activeRange, setActiveRange] = useState<ChartRange>("1y");
   const chartContainerId = useMemo(
     () =>
@@ -136,6 +146,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
   };
 
   useEffect(() => {
+    if (useLightweight) {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
     const buildId = ++buildIdRef.current;
     isChartReadyRef.current = false;
@@ -157,9 +172,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         safeRemoveWidget();
       }
     };
-  }, [tickerSymbol, activeRange]);
+  }, [tickerSymbol, activeRange, useLightweight]);
 
   useEffect(() => {
+    if (useLightweight) return;
+    
     const chartNode = chartContainerRef.current;
     if (!chartNode) return;
 
@@ -191,7 +208,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
       chartNode.removeEventListener("gesturestart", blockGesture);
       chartNode.removeEventListener("gesturechange", blockGesture);
     };
-  }, [tickerSymbol, activeRange]);
+  }, [tickerSymbol, activeRange, useLightweight]);
 
   useEffect(() => {
     const closeOnOutsideClick = (event: MouseEvent) => {
@@ -238,6 +255,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
   };
 
   const captureChartImage = async (): Promise<string | undefined> => {
+    if (useLightweight) {
+      return captureLightweightChartImage(chartContainerRef);
+    }
     return captureChartImageFromWidget({
       widgetRef,
       chartContainerRef,
@@ -509,22 +529,34 @@ export default function StockChart({ symbol }: { symbol: string }) {
         </div>
       </div>
       <div className="relative rounded-b-2xl overflow-hidden">
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#09090b]/60 z-10">
-            <div className="w-6 h-6 border-2 border-zinc-700 border-t-blue-400 rounded-full animate-spin" />
+        {useLightweight ? (
+          <div ref={chartContainerRef}>
+            <LightweightChart
+              symbol={tickerSymbol}
+              range={activeRange}
+              containerId={chartContainerId}
+            />
           </div>
+        ) : (
+          <>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#09090b]/60 z-10">
+                <div className="w-6 h-6 border-2 border-zinc-700 border-t-blue-400 rounded-full animate-spin" />
+              </div>
+            )}
+            <div
+              id={chartContainerId}
+              ref={chartContainerRef}
+              className="w-full touch-none select-none"
+              style={{
+                height: 480,
+                overflow: "hidden",
+                touchAction: "none",
+                overscrollBehavior: "contain",
+              }}
+            />
+          </>
         )}
-        <div
-          id={chartContainerId}
-          ref={chartContainerRef}
-          className="w-full touch-none select-none"
-          style={{
-            height: 480,
-            overflow: "hidden",
-            touchAction: "none",
-            overscrollBehavior: "contain",
-          }}
-        />
       </div>
     </div>
   );
