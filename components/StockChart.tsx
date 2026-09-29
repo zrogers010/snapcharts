@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildTimeframe,
   cleanSymbol,
+  getSymbolKind,
   toTradingViewSymbol,
   rangeToResolution,
   timeRanges,
@@ -76,7 +77,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
         return;
       }
 
-      const widget = new win.TradingView.widget({
+      // For futures, let TradingView use its own datafeed (no custom datafeed)
+      // For stocks/crypto, continue using custom datafeed for flexibility
+      const kind = getSymbolKind(tickerSymbol);
+      const widgetConfig: any = {
         autosize: true,
         symbol: tvSymbol,
         interval: rangeToResolution[activeRange],
@@ -89,7 +93,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
         hide_side_toolbar: false,
         allow_symbol_change: false,
         container_id: chartContainerId,
-        datafeed: createDatafeed(tickerSymbol, tvSymbol, activeRange),
         disabled_features: [
           "chart_scroll",
           "chart_scroll_zoom",
@@ -109,7 +112,15 @@ export default function StockChart({ symbol }: { symbol: string }) {
         enabled_features: [
           "left_toolbar",
         ],
-      }) as TradingViewWidget;
+      };
+      
+      // Only add custom datafeed for non-futures (stocks/crypto)
+      // Futures use TradingView's native datafeed for continuous contract data
+      if (kind !== "future") {
+        widgetConfig.datafeed = createDatafeed(tickerSymbol, tvSymbol, activeRange);
+      }
+      
+      const widget = new win.TradingView.widget(widgetConfig) as TradingViewWidget;
 
       widgetRef.current = widget;
       widget.onChartReady(() => {
