@@ -100,6 +100,10 @@ export default async function ChartSymbolPage({ params }: ChartPageProps) {
     const imageSrc = `/api/charts/share/${share.id}/image`;
     const shareUrl = `${siteUrl.replace(/\/$/, "")}/chart/${encodeURIComponent(share.id)}`;
     const liveChartUrl = `/chart/${encodeURIComponent(share.symbol)}`;
+    const imageDataUrl = share.imageData.startsWith("data:")
+      ? share.imageData
+      : `data:image/png;base64,${share.imageData}`;
+    
     return (
       <main className="min-h-screen bg-[#09090b] text-zinc-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -117,7 +121,11 @@ export default async function ChartSymbolPage({ params }: ChartPageProps) {
               range={share.range}
               imageSrc={imageSrc}
             />
-            <SnapshotActions shareUrl={shareUrl} liveChartUrl={liveChartUrl} symbol={share.symbol} />
+            <SnapshotActions 
+              shareUrl={shareUrl} 
+              liveChartUrl={liveChartUrl}
+              imageData={imageDataUrl}
+            />
             <div className="mt-4">
               <p className="text-xs text-zinc-500 mb-1">Share URL</p>
               <p className="text-sm text-zinc-300 break-all">
