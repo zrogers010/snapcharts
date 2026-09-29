@@ -19,7 +19,11 @@ import type {
   TradingViewWidget,
   TradingViewWindow,
 } from "@/components/stock-chart/types";
-import { trackSnapShareClick } from "@/lib/analytics";
+import {
+  trackSnapCreated,
+  trackSnapShareClick,
+} from "@/lib/analytics";
+import { createBrandedCard } from "@/components/stock-chart/branded-card";
 
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
@@ -37,10 +41,15 @@ export default function StockChart({ symbol }: { symbol: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isShareSaving, setIsShareSaving] = useState(false);
+  const [shareSuccessData, setShareSuccessData] = useState<{
+    shareUrl: string;
+    imageData: string;
+  } | null>(null);
   const [copyLinkDone, setCopyLinkDone] = useState(false);
   const [copyLinkFailed, setCopyLinkFailed] = useState(false);
   const [downloadDone, setDownloadDone] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [canShare, setCanShare] = useState(false);
   const isRemovingRef = useRef(false);
   const isChartReadyRef = useRef(false);
   const buildIdRef = useRef(0);
@@ -198,6 +207,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
+
   const safeRemoveWidget = () => {
     const widget = widgetRef.current;
     if (!widget || isRemovingRef.current) return;
@@ -262,17 +275,47 @@ export default function StockChart({ symbol }: { symbol: string }) {
     return copied;
   };
 
-  const handleShareLink = async () => {
+  const handleSnapCreate = async () => {
     setIsActionMenuOpen(false);
     setCopyLinkDone(false);
     setCopyLinkFailed(false);
+    setShareSuccessData(null);
     setIsShareSaving(true);
+    
     try {
-      const data = await captureChartImage();
-      if (!data) {
+      let imageData: string | undefined;
+
+      try {
+        const [quoteResponse, chartResponse] = await Promise.all([
+          fetch(`/api/quote/${tickerSymbol}`),
+          fetch(`/api/chart/${tickerSymbol}?range=${activeRange}`),
+        ]);
+
+        if (quoteResponse.ok && chartResponse.ok) {
+          const quotePayload = await quoteResponse.json();
+          const chartPayload = await chartResponse.json();
+          
+          if (quotePayload?.quote && chartPayload?.data) {
+            imageData = await createBrandedCard({
+              symbol: tickerSymbol,
+              range: activeRange,
+              quoteData: quotePayload.quote,
+              chartData: chartPayload.data,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn("Branded card creation failed, falling back to chart capture:", error);
+      }
+
+      if (!imageData) {
+        imageData = await captureChartImage();
+      }
+
+      if (!imageData) {
         setCopyLinkFailed(true);
         window.setTimeout(() => setCopyLinkFailed(false), 1500);
-        showActionMessage("Could not create chart link image");
+        showActionMessage("Could not create snap image");
         return;
       }
 
@@ -284,14 +327,14 @@ export default function StockChart({ symbol }: { symbol: string }) {
         body: JSON.stringify({
           symbol: tickerSymbol,
           range: activeRange,
-          imageData: data,
+          imageData,
         }),
       });
 
       if (!response.ok) {
         setCopyLinkFailed(true);
         window.setTimeout(() => setCopyLinkFailed(false), 1500);
-        showActionMessage("Could not create chart link");
+        showActionMessage("Could not create snap");
         return;
       }
 
@@ -299,27 +342,65 @@ export default function StockChart({ symbol }: { symbol: string }) {
       if (!payload?.id) {
         setCopyLinkFailed(true);
         window.setTimeout(() => setCopyLinkFailed(false), 1500);
-        showActionMessage("Could not create chart link");
+        showActionMessage("Could not create snap");
         return;
       }
 
       const shareUrl = buildShareUrl(payload.id);
-      const copied = await copyShareUrl(shareUrl);
-      if (copied) {
-        trackSnapShareClick("copy");
-        setCopyLinkDone(true);
-        showActionMessage("✓ Chart link copied");
-        window.setTimeout(() => setCopyLinkDone(false), 1500);
-      } else {
-        setCopyLinkFailed(true);
-        window.setTimeout(() => setCopyLinkFailed(false), 1500);
-        showActionMessage("Could not copy chart link");
-      }
-      return;
-
+      trackSnapCreated(tickerSymbol, activeRange);
+      
+      setShareSuccessData({ shareUrl, imageData });
+      setIsActionMenuOpen(true);
+      showActionMessage("✓ Snap created");
     } finally {
       setIsShareSaving(false);
     }
+  };
+
+  const handleCopyLinkFromSuccess = async () => {
+    if (!shareSuccessData) return;
+    
+    const copied = await copyShareUrl(shareSuccessData.shareUrl);
+    if (copied) {
+      trackSnapShareClick("copy");
+      setCopyLinkDone(true);
+      showActionMessage("✓ Link copied");
+      window.setTimeout(() => setCopyLinkDone(false), 1500);
+    } else {
+      setCopyLinkFailed(true);
+      window.setTimeout(() => setCopyLinkFailed(false), 1500);
+      showActionMessage("Could not copy link");
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!shareSuccessData) return;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${tickerSymbol} Chart`,
+          text: `Check out this ${tickerSymbol} chart on SnapCharts`,
+          url: shareSuccessData.shareUrl,
+        });
+        trackSnapShareClick("native");
+        showActionMessage("✓ Shared");
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          showActionMessage("Could not share");
+        }
+      }
+    }
+  };
+
+  const handleDownloadFromSuccess = () => {
+    if (!shareSuccessData) return;
+    
+    triggerDownload(shareSuccessData.imageData);
+    trackSnapShareClick("download");
+    setDownloadDone(true);
+    showActionMessage("✓ PNG download started");
+    window.setTimeout(() => setDownloadDone(false), 1500);
   };
 
   return (
@@ -342,28 +423,68 @@ export default function StockChart({ symbol }: { symbol: string }) {
         </div>
         <div className="relative" ref={actionMenuRef}>
           <button
-            onClick={() => setIsActionMenuOpen((v) => !v)}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 hover:text-white border border-blue-500/30 transition-colors shadow-sm"
+            onClick={shareSuccessData ? () => setIsActionMenuOpen((v) => !v) : handleSnapCreate}
+            disabled={isShareSaving}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold ${
+              shareSuccessData
+                ? "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/30"
+                : "bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 border border-blue-500/30"
+            } transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed`}
             aria-expanded={isActionMenuOpen}
             aria-haspopup="menu"
           >
-            Export
-            <span className="ml-2 text-xs text-blue-200/80">▾</span>
+            {isShareSaving ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-3 h-3 border border-blue-200/40 border-t-blue-200 rounded-full animate-spin" />
+                Creating...
+              </span>
+            ) : shareSuccessData ? (
+              <span className="inline-flex items-center gap-1.5">
+                ✓ Snap created
+                <span className="ml-1 text-xs">▾</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                📸 Snap
+              </span>
+            )}
           </button>
-          {isActionMenuOpen && (
+          {isActionMenuOpen && shareSuccessData && (
             <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-lg overflow-hidden z-20">
               <button
-                onClick={handleShareLink}
+                onClick={handleCopyLinkFromSuccess}
+                className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800"
+              >
+                {copyLinkDone ? "✓ Link copied" : "Copy share link"}
+              </button>
+              {canShare && (
+                <button
+                  onClick={handleNativeShare}
+                  className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800 border-t border-zinc-800"
+                >
+                  Share...
+                </button>
+              )}
+              <button
+                onClick={handleDownloadFromSuccess}
+                className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800 border-t border-zinc-800"
+              >
+                {downloadDone ? "✓ Download started" : "Download PNG"}
+              </button>
+            </div>
+          )}
+          {!shareSuccessData && isActionMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-lg overflow-hidden z-20">
+              <button
+                onClick={handleSnapCreate}
                 disabled={isShareSaving}
                 className="w-full px-4 py-2.5 text-left text-sm text-zinc-100 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isShareSaving
-                  ? "Creating chart link..."
+                  ? "Creating snap..."
                   : copyLinkFailed
-                    ? "Unable to copy link"
-                    : copyLinkDone
-                    ? "✓ Chart link copied"
-                    : "Copy chart link"}
+                    ? "Unable to create snap"
+                    : "Create snap"}
               </button>
               <button
                 onClick={handleDownloadPng}
@@ -379,7 +500,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 (copyLinkDone
                   ? "✓ Link copied"
                   : copyLinkFailed
-                  ? "Could not create chart link"
+                  ? "Could not create snap"
                   : "✓ PNG download started")}
             </div>
           )}
