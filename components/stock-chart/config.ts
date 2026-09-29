@@ -49,26 +49,51 @@ export const cleanSymbol = (symbol: string) => {
 };
 
 /**
- * Normalize a Yahoo symbol for TradingView widget use.
- * TradingView doesn't accept `=` in symbol names, so we replace it.
- * The Yahoo symbol is preserved in the datafeed closure for API calls.
+ * Map Yahoo futures symbols to TradingView continuous contract symbols.
+ * TradingView validates symbols against its database even with custom datafeeds,
+ * so we must use real TradingView symbols for widget initialization.
+ * The datafeed still uses Yahoo symbols for data fetching.
  */
-export const normalizeTVSymbol = (yahooSymbol: string): string => {
-  // Replace = with _ for TradingView compatibility
-  // CL=F becomes CL_F, ES=F becomes ES_F, etc.
-  return yahooSymbol.replace(/=/g, "_");
+const yahooToTVFuturesMap: Record<string, string> = {
+  "CL=F": "NYMEX:CL1!",    // Crude Oil WTI
+  "ES=F": "CME_MINI:ES1!", // S&P 500 E-mini
+  "NQ=F": "CME_MINI:NQ1!", // Nasdaq 100 E-mini
+  "GC=F": "COMEX:GC1!",    // Gold
+  "ZN=F": "CBOT:ZN1!",     // 10-Year T-Note
+  "YM=F": "CBOT:YM1!",     // Dow Jones E-mini
+  "SI=F": "COMEX:SI1!",    // Silver
+  "HG=F": "COMEX:HG1!",    // Copper
+  "NG=F": "NYMEX:NG1!",    // Natural Gas
+  "ZC=F": "CBOT:ZC1!",     // Corn
+  "ZS=F": "CBOT:ZS1!",     // Soybeans
+  "ZW=F": "CBOT:ZW1!",     // Wheat
 };
 
 /**
- * Convert a TradingView-normalized symbol back to Yahoo format.
- * This is used when the datafeed receives a normalized symbol.
+ * Convert Yahoo symbol to TradingView-compatible symbol for widget initialization.
+ * For futures, maps to TradingView continuous contract symbols.
+ * For stocks and crypto, returns unchanged.
  */
-export const denormalizeTVSymbol = (tvSymbol: string): string => {
-  // Check if this looks like a futures symbol (ends with _F)
-  if (tvSymbol.endsWith("_F")) {
-    return tvSymbol.replace(/_F$/, "=F");
+export const toTradingViewSymbol = (yahooSymbol: string): string => {
+  // Check if this is a known futures symbol with a TradingView mapping
+  const tvFuture = yahooToTVFuturesMap[yahooSymbol];
+  if (tvFuture) {
+    return tvFuture;
   }
-  return tvSymbol;
+  
+  // For unmapped futures (generic fallback), just return as-is
+  // Stocks (AAPL) and crypto (BTC-USD) work without transformation
+  return yahooSymbol;
+};
+
+/**
+ * Extract the base symbol for display purposes.
+ * Removes exchange prefix from TradingView symbols.
+ */
+export const getTradingViewDisplaySymbol = (tvSymbol: string): string => {
+  // Extract symbol after colon (e.g., "NYMEX:CL1!" -> "CL1!")
+  const parts = tvSymbol.split(":");
+  return parts.length > 1 ? parts[1] : tvSymbol;
 };
 
 export const getSymbolKind = (symbol: string): "stock" | "crypto" | "future" => {

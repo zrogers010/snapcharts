@@ -1,6 +1,6 @@
 import {
   getSymbolKind,
-  normalizeTVSymbol,
+  getTradingViewDisplaySymbol,
   supportedResolutions,
 } from "@/components/stock-chart/config";
 import type {
@@ -10,9 +10,9 @@ import type {
   UDFError,
 } from "@/components/stock-chart/types";
 
-export const createDatafeed = (yahooSymbol: string, activeRange: ChartRange) => {
-  // TradingView widget receives normalized symbols (e.g., CL_F instead of CL=F)
-  const tvSymbol = normalizeTVSymbol(yahooSymbol);
+export const createDatafeed = (yahooSymbol: string, tvSymbol: string, activeRange: ChartRange) => {
+  // Use TradingView symbol for widget responses, Yahoo symbol for API calls
+  const displaySymbol = getTradingViewDisplaySymbol(tvSymbol);
   
   return {
     onReady: (cb: (config: unknown) => void) => {
@@ -71,8 +71,8 @@ export const createDatafeed = (yahooSymbol: string, activeRange: ChartRange) => 
         const isFuture = kind === "future";
         const exchange = isCrypto ? "crypto" : isFuture ? "CME" : "NASDAQ";
         onSymbolResolvedCallback({
-          name: tvSymbol,
-          ticker: tvSymbol,
+          name: displaySymbol,
+          ticker: displaySymbol,
           description: yahooSymbol,
           type: isCrypto ? "crypto" : isFuture ? "futures" : "stock",
           session: isCrypto || isFuture ? "24x7" : "0930-1600",
