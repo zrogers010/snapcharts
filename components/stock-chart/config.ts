@@ -50,23 +50,48 @@ export const cleanSymbol = (symbol: string) => {
 
 /**
  * Map Yahoo futures symbols to TradingView continuous contract symbols.
- * TradingView validates symbols against its database even with custom datafeeds,
- * so we must use real TradingView symbols for widget initialization.
- * The datafeed still uses Yahoo symbols for data fetching.
+ * TradingView's hosted widget validates symbols against its database,
+ * so we must provide valid TradingView symbols even though it will use
+ * TradingView's data feed (not our custom Yahoo datafeed) - accepted tradeoff.
  */
 const yahooToTVFuturesMap: Record<string, string> = {
+  // Energy
   "CL=F": "NYMEX:CL1!",    // Crude Oil WTI
+  "NG=F": "NYMEX:NG1!",    // Natural Gas
+  "RB=F": "NYMEX:RB1!",    // RBOB Gasoline
+  "HO=F": "NYMEX:HO1!",    // Heating Oil
+  
+  // Indices
   "ES=F": "CME_MINI:ES1!", // S&P 500 E-mini
   "NQ=F": "CME_MINI:NQ1!", // Nasdaq 100 E-mini
-  "GC=F": "COMEX:GC1!",    // Gold
-  "ZN=F": "CBOT:ZN1!",     // 10-Year T-Note
   "YM=F": "CBOT:YM1!",     // Dow Jones E-mini
+  "RTY=F": "CME_MINI:RTY1!", // Russell 2000 E-mini
+  
+  // Metals
+  "GC=F": "COMEX:GC1!",    // Gold
   "SI=F": "COMEX:SI1!",    // Silver
   "HG=F": "COMEX:HG1!",    // Copper
-  "NG=F": "NYMEX:NG1!",    // Natural Gas
+  "PL=F": "NYMEX:PL1!",    // Platinum
+  
+  // Agriculture
   "ZC=F": "CBOT:ZC1!",     // Corn
   "ZS=F": "CBOT:ZS1!",     // Soybeans
   "ZW=F": "CBOT:ZW1!",     // Wheat
+  "KC=F": "NYBOT:KC1!",    // Coffee
+  "SB=F": "NYBOT:SB1!",    // Sugar
+  "CT=F": "NYBOT:CT1!",    // Cotton
+  
+  // Treasuries
+  "ZN=F": "CBOT:ZN1!",     // 10-Year T-Note
+  "ZB=F": "CBOT:ZB1!",     // 30-Year T-Bond
+  "ZT=F": "CBOT:ZT1!",     // 2-Year T-Note
+  "ZF=F": "CBOT:ZF1!",     // 5-Year T-Note
+  
+  // Currencies (FX futures)
+  "6E=F": "CME:6E1!",      // Euro FX
+  "6B=F": "CME:6B1!",      // British Pound
+  "6J=F": "CME:6J1!",      // Japanese Yen
+  "6C=F": "CME:6C1!",      // Canadian Dollar
 };
 
 /**
