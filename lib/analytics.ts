@@ -37,7 +37,7 @@ export function trackSnapCreated(symbol: string, range: string) {
   trackEvent("snap_created", { symbol, range });
 }
 
-export function trackSnapShareClick(method: "copy" | "share" | "download") {
+export function trackSnapShareClick(method: "copy" | "native" | "download") {
   trackEvent("snap_share_click", { method });
 }
 
