@@ -1,5 +1,6 @@
 import {
   getSymbolKind,
+  normalizeTVSymbol,
   supportedResolutions,
 } from "@/components/stock-chart/config";
 import type {
@@ -9,7 +10,10 @@ import type {
   UDFError,
 } from "@/components/stock-chart/types";
 
-export const createDatafeed = (symbol: string, activeRange: ChartRange) => {
+export const createDatafeed = (yahooSymbol: string, activeRange: ChartRange) => {
+  // TradingView widget receives normalized symbols (e.g., CL_F instead of CL=F)
+  const tvSymbol = normalizeTVSymbol(yahooSymbol);
+  
   return {
     onReady: (cb: (config: unknown) => void) => {
       cb({
@@ -62,14 +66,14 @@ export const createDatafeed = (symbol: string, activeRange: ChartRange) => {
       onResolveErrorCallback: (error: UDFError) => void
     ) => {
       try {
-        const kind = getSymbolKind(symbol);
+        const kind = getSymbolKind(yahooSymbol);
         const isCrypto = kind === "crypto";
         const isFuture = kind === "future";
         const exchange = isCrypto ? "crypto" : isFuture ? "CME" : "NASDAQ";
         onSymbolResolvedCallback({
-          name: symbol,
-          ticker: symbol,
-          description: symbol,
+          name: tvSymbol,
+          ticker: tvSymbol,
+          description: yahooSymbol,
           type: isCrypto ? "crypto" : isFuture ? "futures" : "stock",
           session: isCrypto || isFuture ? "24x7" : "0930-1600",
           timezone: "America/New_York",
@@ -105,7 +109,7 @@ export const createDatafeed = (symbol: string, activeRange: ChartRange) => {
     ) => {
       try {
         const response = await fetch(
-          `/api/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(activeRange)}`,
+          `/api/chart/${encodeURIComponent(yahooSymbol)}?range=${encodeURIComponent(activeRange)}`,
           {
             cache: "no-store",
           }

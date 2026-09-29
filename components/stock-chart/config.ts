@@ -48,6 +48,29 @@ export const cleanSymbol = (symbol: string) => {
   );
 };
 
+/**
+ * Normalize a Yahoo symbol for TradingView widget use.
+ * TradingView doesn't accept `=` in symbol names, so we replace it.
+ * The Yahoo symbol is preserved in the datafeed closure for API calls.
+ */
+export const normalizeTVSymbol = (yahooSymbol: string): string => {
+  // Replace = with _ for TradingView compatibility
+  // CL=F becomes CL_F, ES=F becomes ES_F, etc.
+  return yahooSymbol.replace(/=/g, "_");
+};
+
+/**
+ * Convert a TradingView-normalized symbol back to Yahoo format.
+ * This is used when the datafeed receives a normalized symbol.
+ */
+export const denormalizeTVSymbol = (tvSymbol: string): string => {
+  // Check if this looks like a futures symbol (ends with _F)
+  if (tvSymbol.endsWith("_F")) {
+    return tvSymbol.replace(/_F$/, "=F");
+  }
+  return tvSymbol;
+};
+
 export const getSymbolKind = (symbol: string): "stock" | "crypto" | "future" => {
   const upper = symbol.toUpperCase();
   if (upper.includes("-")) return "crypto";
