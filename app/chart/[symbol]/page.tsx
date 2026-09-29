@@ -145,13 +145,14 @@ export default async function ChartSymbolPage({ params }: ChartPageProps) {
   }
 
   const normalizedSymbol = normalizeRouteSymbol(routeValue);
+  const encodedSymbol = encodeURIComponent(normalizedSymbol);
   
   const [quoteResult, newsResult] = await Promise.allSettled([
-    fetch(`${siteUrl}/api/quote/${normalizedSymbol}`, { 
+    fetch(`${siteUrl}/api/quote/${encodedSymbol}`, { 
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store'
     }).then(r => r.json()),
-    fetch(`${siteUrl}/api/news/${normalizedSymbol}`, {
+    fetch(`${siteUrl}/api/news/${encodedSymbol}`, {
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store'
     }).then(r => r.json()),

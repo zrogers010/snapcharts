@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildTimeframe,
   cleanSymbol,
+  normalizeTVSymbol,
   rangeToResolution,
   timeRanges,
 } from "@/components/stock-chart/config";
@@ -27,14 +28,15 @@ import { createBrandedCard } from "@/components/stock-chart/branded-card";
 
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
+  const tvSymbol = useMemo(() => normalizeTVSymbol(tickerSymbol), [tickerSymbol]);
   const [activeRange, setActiveRange] = useState<ChartRange>("1y");
   const chartContainerId = useMemo(
     () =>
-      `tv-chart-container-${tickerSymbol
+      `tv-chart-container-${tvSymbol
         .concat("-", activeRange)
         .replace(/[^a-zA-Z0-9_-]/g, "-")
         .toLowerCase()}`,
-    [tickerSymbol, activeRange]
+    [tvSymbol, activeRange]
   );
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<TradingViewWidget | null>(null);
@@ -76,7 +78,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
 
       const widget = new win.TradingView.widget({
         autosize: true,
-        symbol: tickerSymbol,
+        symbol: tvSymbol,
         interval: rangeToResolution[activeRange],
         timeframe: buildTimeframe(activeRange),
         timezone: "America/New_York",
@@ -290,8 +292,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
       if (!imageData) {
         try {
           const [quoteResponse, chartResponse] = await Promise.all([
-            fetch(`/api/quote/${tickerSymbol}`),
-            fetch(`/api/chart/${tickerSymbol}?range=${activeRange}`),
+            fetch(`/api/quote/${encodeURIComponent(tickerSymbol)}`),
+            fetch(`/api/chart/${encodeURIComponent(tickerSymbol)}?range=${activeRange}`),
           ]);
 
           if (quoteResponse.ok && chartResponse.ok) {

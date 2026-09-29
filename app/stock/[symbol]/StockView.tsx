@@ -128,8 +128,8 @@ export default function StockView({ symbol }: { symbol: string }) {
     trackChartView(normalizedSymbol);
 
     Promise.all([
-      fetch(`/api/quote/${normalizedSymbol}`).then((r) => r.json()),
-      fetch(`/api/news/${normalizedSymbol}`).then((r) => r.json()),
+      fetch(`/api/quote/${encodeURIComponent(normalizedSymbol)}`).then((r) => r.json()),
+      fetch(`/api/news/${encodeURIComponent(normalizedSymbol)}`).then((r) => r.json()),
     ])
       .then(([quoteData, newsData]) => {
         if (quoteData.error) {
