@@ -120,17 +120,32 @@ build_and_deploy() {
     docker rm -f "$CONTAINER_NAME"
   fi
 
+  local share_dir="${APP_DIR}/data/shares"
+  log "Ensuring share directory ${share_dir} exists with proper permissions..."
+  mkdir -p "$share_dir"
+  sudo chown -R 1001:1001 "$share_dir" || chown -R 1001:1001 "$share_dir" || true
+
+  local env_file="${APP_DIR}/.env.production"
+  local ga_id=""
+  if [ -f "$env_file" ]; then
+    ga_id="$(grep -E '^NEXT_PUBLIC_GA_MEASUREMENT_ID=' "$env_file" | cut -d= -f2- || echo '')"
+  fi
+
   log "Starting container ${CONTAINER_NAME} on port ${publish_target}..."
   docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
     -p "${publish_target}" \
+    -v "${share_dir}:/app/data/shares" \
     -e NODE_ENV=production \
     -e PORT="${CONTAINER_PORT}" \
+    -e SNAP_SHARE_DIR=/app/data/shares \
+    ${ga_id:+-e NEXT_PUBLIC_GA_MEASUREMENT_ID="${ga_id}"} \
     "$image_tag"
 
   docker image prune -f >/dev/null 2>&1 || true
   log "Deployment complete. Container: $CONTAINER_NAME, image: $image_tag"
+  log "Share directory mounted: ${share_dir} -> /app/data/shares"
 }
 
 install_prereq

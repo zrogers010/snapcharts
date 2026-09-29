@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id,
       url: `${request.nextUrl.origin}/chart/${id}`,
+      image_url: `${request.nextUrl.origin}/api/charts/share/${id}/image`,
+      noindex: true,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("too large")) {
