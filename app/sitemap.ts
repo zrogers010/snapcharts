@@ -17,29 +17,41 @@ const discoverTopics = [
   "swing",
 ];
 
-const trendingSymbols = [
+const liquidSymbols = [
   "AAPL",
   "MSFT",
   "NVDA",
   "TSLA",
   "META",
+  "GOOGL",
+  "AMD",
+  "AMZN",
+  "PLTR",
+  "SPY",
+  "QQQ",
   "BTC-USD",
   "ETH-USD",
+  "SOL-USD",
   "ES=F",
-  "SPY",
+  "NQ=F",
+  "GC=F",
+  "CL=F",
+  "ZN=F",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const today = new Date();
+  const staticLastModified = new Date("2026-09-29T00:00:00Z");
+  
   const topicEntries: SitemapEntry[] = discoverTopics.map((topic) => ({
     url: `${normalizedSiteUrl}/discover?topic=${topic}`,
-    lastModified: today,
+    lastModified: staticLastModified,
     changeFrequency: "weekly",
     priority: 0.55,
   }));
-  const symbolEntries: SitemapEntry[] = trendingSymbols.map((symbol) => ({
+  
+  const symbolEntries: SitemapEntry[] = liquidSymbols.map((symbol) => ({
     url: `${normalizedSiteUrl}/chart/${encodeURIComponent(symbol)}`,
-    lastModified: today,
+    lastModified: staticLastModified,
     changeFrequency: "daily",
     priority: 0.75,
   }));
@@ -47,13 +59,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: normalizedSiteUrl + "/",
-      lastModified: today,
+      lastModified: staticLastModified,
       changeFrequency: "hourly",
       priority: 1,
     },
     {
       url: normalizedSiteUrl + "/discover",
-      lastModified: today,
+      lastModified: staticLastModified,
       changeFrequency: "daily",
       priority: 0.8,
     },
