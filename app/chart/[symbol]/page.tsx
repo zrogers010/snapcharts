@@ -117,7 +117,7 @@ export default async function ChartSymbolPage({ params }: ChartPageProps) {
               range={share.range}
               imageSrc={imageSrc}
             />
-            <SnapshotActions shareUrl={shareUrl} liveChartUrl={liveChartUrl} />
+            <SnapshotActions shareUrl={shareUrl} liveChartUrl={liveChartUrl} symbol={share.symbol} />
             <div className="mt-4">
               <p className="text-xs text-zinc-500 mb-1">Share URL</p>
               <p className="text-sm text-zinc-300 break-all">

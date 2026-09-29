@@ -16,9 +16,9 @@ import type { Metadata } from "next";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "SnapCharts | Market Pulse, Charts, and News",
+  title: "SnapCharts | Pro charts. Snap & share.",
   description:
-    "Track live-delayed market data with SnapCharts: discover trending stocks, crypto, and futures, read market headlines with images, and explore interactive charts.",
+    "Professional interactive charts for stocks, crypto, and futures. Capture and share chart snapshots instantly.",
   alternates: {
     canonical: "/",
   },
@@ -26,16 +26,16 @@ export const metadata: Metadata = {
     "stock charts",
     "crypto charts",
     "futures",
-    "market news",
-    "market pulse",
+    "chart snapshots",
+    "share charts",
     "SnapCharts",
     "stock market",
-    "financial dashboard",
+    "financial charts",
   ],
   openGraph: {
-    title: "SnapCharts | Market Pulse, Charts, and News",
+    title: "SnapCharts | Pro charts. Snap & share.",
     description:
-      "Search symbols, review market movers, and explore live-delayed quotes for stocks, crypto, and futures.",
+      "Professional interactive charts for stocks, crypto, and futures. Capture and share snapshots instantly.",
     type: "website",
     siteName: "SnapCharts",
     url: "/",
@@ -44,15 +44,15 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "SnapCharts - Market Pulse, Charts, and News",
+        alt: "SnapCharts - Pro charts. Snap & share.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SnapCharts | Market Pulse, Charts, and News",
+    title: "SnapCharts | Pro charts. Snap & share.",
     description:
-      "Explore live-delayed quotes, charts, and latest headlines for stocks, crypto, and futures.",
+      "Professional interactive charts for stocks, crypto, and futures. Capture and share snapshots instantly.",
     images: ["/og-image.png"],
   },
 };
@@ -318,10 +318,10 @@ export default async function HomePage() {
               SnapCharts
             </p>
             <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-white">
-              Track market pulse with live-delayed charts and news.
+              Pro charts. Snap & share.
             </h1>
             <p className="mt-3 text-zinc-400 max-w-2xl">
-              Find symbols quickly, open interactive chart pages with stats, and discover market-moving headlines across stocks, crypto, and futures.
+              Interactive charts for stocks, crypto, and futures. Capture and share snapshots instantly.
             </p>
             <div className="mt-6 max-w-2xl">
               <SearchBox large />
