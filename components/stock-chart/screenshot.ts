@@ -24,6 +24,81 @@ const resolveCaptureFailure = (
   value?: string
 ) => resolve(value);
 
+const formatCreatedLabel = () =>
+  `Created on ${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date())}`;
+
+const stampCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const output = document.createElement("canvas");
+  output.width = canvas.width;
+  output.height = canvas.height;
+  const ctx = output.getContext("2d");
+  if (!ctx) return canvas;
+
+  ctx.drawImage(canvas, 0, 0);
+
+  const footerHeight = Math.max(30, Math.min(72, Math.round(output.height * 0.06)));
+  ctx.fillStyle = "#09090b";
+  ctx.fillRect(0, output.height - footerHeight, output.width, footerHeight);
+
+  const headerHeight = Math.min(44, Math.round(output.height * 0.045));
+  ctx.fillStyle = "#09090b";
+  ctx.fillRect(0, 0, output.width, headerHeight);
+
+  ctx.fillStyle = "#d4d4d8";
+  const fontSize = Math.max(11, Math.min(18, headerHeight - 6));
+  ctx.font = `${500} ${fontSize}px "Inter", Arial, sans-serif`;
+  ctx.textBaseline = "middle";
+  const label = formatCreatedLabel();
+  const metrics = ctx.measureText(label);
+  const textY = headerHeight / 2;
+  const maxTextWidth = Math.max(1, output.width - 24);
+  const scale = Math.min(1, maxTextWidth / Math.max(1, metrics.width));
+  ctx.save();
+  ctx.translate(12, textY);
+  ctx.scale(scale, 1);
+  ctx.fillText(label, 0, 0);
+  ctx.restore();
+
+  return output;
+};
+
+export const captureLightweightChartImage = async (
+  chartContainerRef: RefObject<HTMLDivElement>
+): Promise<string | undefined> => {
+  if (!chartContainerRef.current) return;
+
+  const canvases = Array.from(
+    chartContainerRef.current.querySelectorAll("canvas")
+  );
+  if (canvases.length === 0) return;
+
+  const bounds = chartContainerRef.current.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const output = document.createElement("canvas");
+  output.width = Math.max(1, Math.floor(bounds.width * dpr));
+  output.height = Math.max(1, Math.floor(bounds.height * dpr));
+  const ctx = output.getContext("2d");
+  if (!ctx) return;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#09090b";
+  ctx.fillRect(0, 0, bounds.width, bounds.height);
+
+  canvases.forEach((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = rect.left - bounds.left;
+    const y = rect.top - bounds.top;
+    ctx.drawImage(canvas, x, y, rect.width, rect.height);
+  });
+
+  const stamped = stampCanvas(output);
+  return stamped.toDataURL("image/png");
+};
+
 export const triggerDownload = (
   url: string,
   tickerSymbol: string,
@@ -77,48 +152,6 @@ export const captureChartImage = async ({
   };
 
   const toDataUrl = async (shot: unknown): Promise<string | undefined> => {
-    const formatCreatedLabel = () =>
-      `Created on ${new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }).format(new Date())}`;
-
-    const stampCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-      const output = document.createElement("canvas");
-      output.width = canvas.width;
-      output.height = canvas.height;
-      const ctx = output.getContext("2d");
-      if (!ctx) return canvas;
-
-      ctx.drawImage(canvas, 0, 0);
-
-      const footerHeight = Math.max(30, Math.min(72, Math.round(output.height * 0.06)));
-      ctx.fillStyle = "#09090b";
-      ctx.fillRect(0, output.height - footerHeight, output.width, footerHeight);
-
-      const headerHeight = Math.min(44, Math.round(output.height * 0.045));
-      ctx.fillStyle = "#09090b";
-      ctx.fillRect(0, 0, output.width, headerHeight);
-
-      ctx.fillStyle = "#d4d4d8";
-      const fontSize = Math.max(11, Math.min(18, headerHeight - 6));
-      ctx.font = `${500} ${fontSize}px "Inter", Arial, sans-serif`;
-      ctx.textBaseline = "middle";
-      const label = formatCreatedLabel();
-      const metrics = ctx.measureText(label);
-      const textY = headerHeight / 2;
-      const maxTextWidth = Math.max(1, output.width - 24);
-      const scale = Math.min(1, maxTextWidth / Math.max(1, metrics.width));
-      ctx.save();
-      ctx.translate(12, textY);
-      ctx.scale(scale, 1);
-      ctx.fillText(label, 0, 0);
-      ctx.restore();
-
-      return output;
-    };
-
     if (!shot) return;
     if (typeof shot === "string") {
       if (shot.startsWith("data:")) {
