@@ -137,9 +137,11 @@ async function run() {
     const sharePageResponse = await fetch(new URL(`/chart/${share.id}`, baseUrl));
     assert(sharePageResponse.ok, `share page returned ${sharePageResponse.status}`);
     const sharePageHtml = await sharePageResponse.text();
+    const robotsMatch = sharePageHtml.match(/<meta\s+name="robots"\s+content="([^"]+)"/i);
+    assert(robotsMatch, "share page missing robots meta tag");
     assert(
-      sharePageHtml.includes('name="robots"') && sharePageHtml.includes('noindex'),
-      "share page missing robots noindex meta tag"
+      robotsMatch[1].includes('noindex') && robotsMatch[1].includes('nofollow'),
+      `share page robots meta should be noindex,nofollow but got: ${robotsMatch[1]}`
     );
     assert(
       sharePageHtml.includes('property="og:image"'),
