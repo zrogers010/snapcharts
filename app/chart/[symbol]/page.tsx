@@ -2,9 +2,11 @@ import { Metadata } from "next";
 import Link from "next/link";
 import SharedChartDisplay from "@/components/SharedChartDisplay";
 import SnapshotActions from "@/components/SnapshotActions";
-import StockView from "@/app/stock/[symbol]/StockView";
 import { getShare } from "@/lib/chartShareStore";
 import { getSiteUrl } from "@/lib/site";
+import ChartPageContent from "./ChartPageContent";
+import { ChartViewTracker } from "./ChartViewTracker";
+import Header from "@/components/Header";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -143,5 +145,52 @@ export default async function ChartSymbolPage({ params }: ChartPageProps) {
   }
 
   const normalizedSymbol = normalizeRouteSymbol(routeValue);
-  return <StockView symbol={normalizedSymbol} />;
+  
+  const [quoteResult, newsResult] = await Promise.allSettled([
+    fetch(`${siteUrl}/api/quote/${normalizedSymbol}`, { 
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store'
+    }).then(r => r.json()),
+    fetch(`${siteUrl}/api/news/${normalizedSymbol}`, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store'
+    }).then(r => r.json()),
+  ]);
+  
+  const quoteData = quoteResult.status === 'fulfilled' ? quoteResult.value : null;
+  const newsData = newsResult.status === 'fulfilled' ? newsResult.value : null;
+  
+  if (quoteData?.error || !quoteData?.quote) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <ChartViewTracker symbol={normalizedSymbol} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+          <div className="text-5xl mb-4">📉</div>
+          <h2 className="text-xl font-semibold text-white mb-2">
+            Symbol Not Found
+          </h2>
+          <p className="text-zinc-400 max-w-sm mx-auto">
+            {quoteData?.error || `We couldn't find data for "${normalizedSymbol}".`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const quote = quoteData.quote;
+  const summary = quoteData.summary || null;
+  const news = newsData?.news || [];
+
+  return (
+    <>
+      <ChartViewTracker symbol={normalizedSymbol} />
+      <ChartPageContent
+        symbol={normalizedSymbol}
+        quote={quote}
+        summary={summary}
+        news={news}
+      />
+    </>
+  );
 }
