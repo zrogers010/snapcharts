@@ -49,26 +49,76 @@ export const cleanSymbol = (symbol: string) => {
 };
 
 /**
- * Normalize a Yahoo symbol for TradingView widget use.
- * TradingView doesn't accept `=` in symbol names, so we replace it.
- * The Yahoo symbol is preserved in the datafeed closure for API calls.
+ * Map Yahoo futures symbols to TradingView continuous contract symbols.
+ * TradingView's hosted widget validates symbols against its database,
+ * so we must provide valid TradingView symbols even though it will use
+ * TradingView's data feed (not our custom Yahoo datafeed) - accepted tradeoff.
  */
-export const normalizeTVSymbol = (yahooSymbol: string): string => {
-  // Replace = with _ for TradingView compatibility
-  // CL=F becomes CL_F, ES=F becomes ES_F, etc.
-  return yahooSymbol.replace(/=/g, "_");
+const yahooToTVFuturesMap: Record<string, string> = {
+  // Energy
+  "CL=F": "NYMEX:CL1!",    // Crude Oil WTI
+  "NG=F": "NYMEX:NG1!",    // Natural Gas
+  "RB=F": "NYMEX:RB1!",    // RBOB Gasoline
+  "HO=F": "NYMEX:HO1!",    // Heating Oil
+  
+  // Indices
+  "ES=F": "CME_MINI:ES1!", // S&P 500 E-mini
+  "NQ=F": "CME_MINI:NQ1!", // Nasdaq 100 E-mini
+  "YM=F": "CBOT:YM1!",     // Dow Jones E-mini
+  "RTY=F": "CME_MINI:RTY1!", // Russell 2000 E-mini
+  
+  // Metals
+  "GC=F": "COMEX:GC1!",    // Gold
+  "SI=F": "COMEX:SI1!",    // Silver
+  "HG=F": "COMEX:HG1!",    // Copper
+  "PL=F": "NYMEX:PL1!",    // Platinum
+  
+  // Agriculture
+  "ZC=F": "CBOT:ZC1!",     // Corn
+  "ZS=F": "CBOT:ZS1!",     // Soybeans
+  "ZW=F": "CBOT:ZW1!",     // Wheat
+  "KC=F": "NYBOT:KC1!",    // Coffee
+  "SB=F": "NYBOT:SB1!",    // Sugar
+  "CT=F": "NYBOT:CT1!",    // Cotton
+  
+  // Treasuries
+  "ZN=F": "CBOT:ZN1!",     // 10-Year T-Note
+  "ZB=F": "CBOT:ZB1!",     // 30-Year T-Bond
+  "ZT=F": "CBOT:ZT1!",     // 2-Year T-Note
+  "ZF=F": "CBOT:ZF1!",     // 5-Year T-Note
+  
+  // Currencies (FX futures)
+  "6E=F": "CME:6E1!",      // Euro FX
+  "6B=F": "CME:6B1!",      // British Pound
+  "6J=F": "CME:6J1!",      // Japanese Yen
+  "6C=F": "CME:6C1!",      // Canadian Dollar
 };
 
 /**
- * Convert a TradingView-normalized symbol back to Yahoo format.
- * This is used when the datafeed receives a normalized symbol.
+ * Convert Yahoo symbol to TradingView-compatible symbol for widget initialization.
+ * For futures, maps to TradingView continuous contract symbols.
+ * For stocks and crypto, returns unchanged.
  */
-export const denormalizeTVSymbol = (tvSymbol: string): string => {
-  // Check if this looks like a futures symbol (ends with _F)
-  if (tvSymbol.endsWith("_F")) {
-    return tvSymbol.replace(/_F$/, "=F");
+export const toTradingViewSymbol = (yahooSymbol: string): string => {
+  // Check if this is a known futures symbol with a TradingView mapping
+  const tvFuture = yahooToTVFuturesMap[yahooSymbol];
+  if (tvFuture) {
+    return tvFuture;
   }
-  return tvSymbol;
+  
+  // For unmapped futures (generic fallback), just return as-is
+  // Stocks (AAPL) and crypto (BTC-USD) work without transformation
+  return yahooSymbol;
+};
+
+/**
+ * Extract the base symbol for display purposes.
+ * Removes exchange prefix from TradingView symbols.
+ */
+export const getTradingViewDisplaySymbol = (tvSymbol: string): string => {
+  // Extract symbol after colon (e.g., "NYMEX:CL1!" -> "CL1!")
+  const parts = tvSymbol.split(":");
+  return parts.length > 1 ? parts[1] : tvSymbol;
 };
 
 export const getSymbolKind = (symbol: string): "stock" | "crypto" | "future" => {

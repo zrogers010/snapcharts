@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildTimeframe,
   cleanSymbol,
-  normalizeTVSymbol,
+  toTradingViewSymbol,
   rangeToResolution,
   timeRanges,
 } from "@/components/stock-chart/config";
@@ -28,15 +28,15 @@ import { createBrandedCard } from "@/components/stock-chart/branded-card";
 
 export default function StockChart({ symbol }: { symbol: string }) {
   const tickerSymbol = useMemo(() => cleanSymbol(symbol), [symbol]);
-  const tvSymbol = useMemo(() => normalizeTVSymbol(tickerSymbol), [tickerSymbol]);
+  const tvSymbol = useMemo(() => toTradingViewSymbol(tickerSymbol), [tickerSymbol]);
   const [activeRange, setActiveRange] = useState<ChartRange>("1y");
   const chartContainerId = useMemo(
     () =>
-      `tv-chart-container-${tvSymbol
+      `tv-chart-container-${tickerSymbol
         .concat("-", activeRange)
         .replace(/[^a-zA-Z0-9_-]/g, "-")
         .toLowerCase()}`,
-    [tvSymbol, activeRange]
+    [tickerSymbol, activeRange]
   );
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<TradingViewWidget | null>(null);
@@ -89,7 +89,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
         hide_side_toolbar: false,
         allow_symbol_change: false,
         container_id: chartContainerId,
-        datafeed: createDatafeed(tickerSymbol, activeRange),
+        datafeed: createDatafeed(tickerSymbol, tvSymbol, activeRange),
         disabled_features: [
           "chart_scroll",
           "chart_scroll_zoom",

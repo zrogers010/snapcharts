@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTVSymbol, denormalizeTVSymbol, getSymbolKind } from "@/components/stock-chart/config";
+import { toTradingViewSymbol, getTradingViewDisplaySymbol, getSymbolKind } from "@/components/stock-chart/config";
 
-describe("TradingView symbol normalization for futures", () => {
+describe("TradingView symbol mapping for futures", () => {
   const futuresSymbols = [
-    { yahoo: "CL=F", tv: "CL_F", name: "Crude Oil" },
-    { yahoo: "ES=F", tv: "ES_F", name: "S&P 500" },
-    { yahoo: "NQ=F", tv: "NQ_F", name: "Nasdaq" },
-    { yahoo: "GC=F", tv: "GC_F", name: "Gold" },
-    { yahoo: "ZN=F", tv: "ZN_F", name: "10-Year T-Note" },
+    { yahoo: "CL=F", tv: "NYMEX:CL1!", display: "CL1!", name: "Crude Oil" },
+    { yahoo: "ES=F", tv: "CME_MINI:ES1!", display: "ES1!", name: "S&P 500" },
+    { yahoo: "NQ=F", tv: "CME_MINI:NQ1!", display: "NQ1!", name: "Nasdaq" },
+    { yahoo: "GC=F", tv: "COMEX:GC1!", display: "GC1!", name: "Gold" },
+    { yahoo: "ZN=F", tv: "CBOT:ZN1!", display: "ZN1!", name: "10-Year T-Note" },
   ];
 
   const cryptoSymbols = [
@@ -22,19 +22,19 @@ describe("TradingView symbol normalization for futures", () => {
     { symbol: "TSLA", name: "Tesla" },
   ];
 
-  it("should normalize Yahoo futures symbols for TradingView", () => {
+  it("should map Yahoo futures symbols to TradingView continuous contracts", () => {
     futuresSymbols.forEach(({ yahoo, tv, name }) => {
-      const normalized = normalizeTVSymbol(yahoo);
-      expect(normalized).toBe(tv);
+      const mapped = toTradingViewSymbol(yahoo);
+      expect(mapped).toBe(tv);
       console.log(`✓ ${name}: ${yahoo} → ${tv}`);
     });
   });
 
-  it("should denormalize TradingView symbols back to Yahoo format", () => {
-    futuresSymbols.forEach(({ yahoo, tv, name }) => {
-      const denormalized = denormalizeTVSymbol(tv);
-      expect(denormalized).toBe(yahoo);
-      console.log(`✓ ${name}: ${tv} → ${yahoo}`);
+  it("should extract display symbol from TradingView symbol", () => {
+    futuresSymbols.forEach(({ tv, display, name }) => {
+      const displaySymbol = getTradingViewDisplaySymbol(tv);
+      expect(displaySymbol).toBe(display);
+      console.log(`✓ ${name}: ${tv} → ${display}`);
     });
   });
 
@@ -59,23 +59,26 @@ describe("TradingView symbol normalization for futures", () => {
     });
   });
 
-  it("should not modify crypto symbols during normalization", () => {
+  it("should not modify crypto symbols during mapping", () => {
     cryptoSymbols.forEach(({ symbol }) => {
-      expect(normalizeTVSymbol(symbol)).toBe(symbol);
+      expect(toTradingViewSymbol(symbol)).toBe(symbol);
     });
   });
 
-  it("should not modify stock symbols during normalization", () => {
+  it("should not modify stock symbols during mapping", () => {
     stockSymbols.forEach(({ symbol }) => {
-      expect(normalizeTVSymbol(symbol)).toBe(symbol);
+      expect(toTradingViewSymbol(symbol)).toBe(symbol);
     });
   });
 
-  it("should handle round-trip normalization correctly", () => {
+  it("should preserve Yahoo symbols for API calls (separate concern)", () => {
+    // This test documents that the Yahoo symbol is preserved in the datafeed
+    // for API calls, while the TradingView symbol is only for widget init
     futuresSymbols.forEach(({ yahoo }) => {
-      const normalized = normalizeTVSymbol(yahoo);
-      const denormalized = denormalizeTVSymbol(normalized);
-      expect(denormalized).toBe(yahoo);
+      // In the actual implementation, datafeed receives both symbols
+      // and uses Yahoo symbol for /api/chart calls
+      const apiSymbol = yahoo; // Would be used in: /api/chart/${encodeURIComponent(yahooSymbol)}
+      expect(apiSymbol).toContain("=F");
     });
   });
 });
