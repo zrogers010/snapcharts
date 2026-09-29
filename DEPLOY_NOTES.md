@@ -9,6 +9,14 @@ Fixed the `POST /api/charts/share` 500 error by making share storage configurabl
 - `ensureStoreDir()` silently swallowed mkdir/write errors
 - Result: 500 error on share creation
 
+## Issues Fixed (Post-Hotfix)
+After the initial hotfix enabled share creation, additional gaps were identified:
+1. **Wrong URLs**: Create response used `request.nextUrl.origin` → `https://0.0.0.0:3000/chart/{id}`
+2. **Missing noindex**: Share pages lacked robots meta tag (showed "index, follow")
+3. **Missing fields**: Create response didn't include `image_url` or `noindex` flag
+
+All gaps now resolved in this PR.
+
 ## Changes Implemented
 
 ### Code Changes
@@ -18,14 +26,16 @@ Fixed the `POST /api/charts/share` 500 error by making share storage configurabl
    - Hardened error handling: throws clear errors instead of silent failures
 
 2. **Enhanced API response** (`app/api/charts/share/route.ts`)
+   - **Fixed URL generation**: Now uses `getSiteUrl()` instead of `request.nextUrl.origin`
+   - Prevents wrong URLs like `https://0.0.0.0:3000` in production
    - Added `image_url`: absolute URL to image endpoint
    - Added `noindex: true` flag
    - Response format:
      ```json
      {
        "id": "string",
-       "url": "https://domain.com/chart/{id}",
-       "image_url": "https://domain.com/api/charts/share/{id}/image",
+       "url": "https://snapcharts.com/chart/{id}",
+       "image_url": "https://snapcharts.com/api/charts/share/{id}/image",
        "noindex": true
      }
      ```
@@ -150,6 +160,8 @@ $APP_DIR/                 /app/
 └── .env.production       ├── .next/
                           └── server.js
 ```
+
+**Note on Hotfix Compatibility**: The temporary hotfix mounted the same host path (`/opt/snapcharts/data/shares`) to container path `/app/.snapcharts-shares` without setting `SNAP_SHARE_DIR`. This PR changes the container mount point to `/app/data/shares` and explicitly sets `SNAP_SHARE_DIR=/app/data/shares`. Since the host path remains the same, existing shares created during the hotfix will be preserved and accessible after deploying this PR.
 
 ### Volume Ownership
 - **UID/GID**: 1001:1001 (nextjs:nodejs)
